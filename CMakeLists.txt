@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24.2)
+cmake_minimum_required(VERSION 3.22.0)
 
 project(RAY VERSION 1.0 DESCRIPTION "PEW PEW" LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
