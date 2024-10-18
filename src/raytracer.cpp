@@ -15,12 +15,13 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	// Notez que votre code de caméra ne doit pas être basé sur ce code de caméra. Ce code n’est là que pour prendre en compte le développement initial du test d’intersection.
 	// Pour utiliser cette caméra, vous devez supprimer les commentaires qui rendent inactive cette partie du code, et mettre en commentaires la boucle d’image originale.
 
-	/*CameraOrthographic camOrth;
+	CameraOrthographic camOrth;
 	double3 uVec{ 0,1,0 };
 	double3 vVec{ 0,0,1 };
 	double y_shift = 2.0 / scene.resolution[1];
 	double x_shift = 2.0 / scene.resolution[0];
 
+	// scan the pixels
 	for (int y = 0; y < scene.resolution[1]; y++) {
 		if (y % 40) {
 			std::cout << "\rScanlines completed: " << y << "/" << scene.resolution[1] << '\r';
@@ -45,14 +46,29 @@ void Raytracer::render(const Scene& scene, Frame* output)
 			output->set_color_pixel(x, y, color);
 			output->set_depth_pixel(x, y, itHits);
 		}
-	}*/
+	}
 
 	//---------------------------------------------------------------------------------------------------------------
 
 
 	// @@@@@@ VOTRE CODE ICI
 	// Calculez les paramètres de la caméra pour les rayons.
+
+	double3 direction = (scene.camera.center - scene.camera.position) / length(scene.camera.center - scene.camera.position); // find way to normalize
+	double3 u = scene.camera.up / length(scene.camera.up); // up vector
+	double3 v = cross(direction, u) / length(cross(direction, u)); // right vector
+	double distance = scene.camera.z_near; // position du plan de projection
+
+	// view volume
+	// the view is orthogonal which makes the view volume a box, easier to compute (t,b,l,r)
+	double topPlane = distance * tan(deg2rad(scene.camera.fovy / 2));
+	double rightPlane = topPlane * scene.camera.aspect; // why multiply with aspect?
+	double leftPlane = -rightPlane;
+	double bottomPlane = -topPlane;
 	
+	// deltas pour separation des pixels?
+	double du = (rightPlane - leftPlane) / scene.resolution[0];
+	double dv = (topPlane - bottomPlane) / scene.resolution[1];
 
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
