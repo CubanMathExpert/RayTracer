@@ -69,9 +69,10 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	double pixel_delta_u = (rightPlane - leftPlane) / scene.resolution[0];
 	double pixel_delta_v = (topPlane - bottomPlane) / scene.resolution[1];
 
-	auto viewport_upper_left = scene.camera.center - double3(0, 0, scene.camera.focus_distance);
-	std::cout << "Viewport upper left: " << viewport_upper_left.x << " " << viewport_upper_left.y << " " << viewport_upper_left.z << std::endl;
-	double3 zeroPlane = (scene.camera.position + scene.camera.z_near * direction) + (leftPlane * viewport_u) + (topPlane * viewport_v);
+	double3 viewport_upper_left = scene.camera.center - double3(0, 0, scene.camera.focus_distance); 
+	auto pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u * viewport_u);
+	//std::cout << "Viewport upper left: " << viewport_upper_left.x << " " << viewport_upper_left.y << " " << viewport_upper_left.z << std::endl;
+	//double3 zeroPlane = (scene.camera.position + scene.camera.z_near * direction) + (leftPlane * viewport_u) + (topPlane * viewport_v);
 
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
@@ -97,16 +98,11 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
 				// Lancez le rayon de manière uniformément aléatoire à l'intérieur du pixel dans la zone délimité par jitter_radius. 
 				//Faites la moyenne des différentes couleurs obtenues suite à la récursion.
-				double2 jitter = random_in_unit_disk() * scene.jitter_radius;
-				double3 pixelPos = zeroPlane + (x + jitter.x) * pixel_delta_v * viewport_v + (y + jitter.y) * pixel_delta_u * viewport_u;
-				ray = Ray(scene.camera.position, normalize(pixelPos - scene.camera.position));
-				double z_depth = scene.camera.z_far;
-
-				trace(scene, ray, ray_depth, &ray_color, &z_depth);
-				avg_z_depth += z_depth;
-				avg_ray_color += ray_color;
-				//std::cout << "Pixel Position: " << pixelPos.x << " " << pixelPos.y << " " << pixelPos.z << std::endl;
-				//std::cout << jitter.x << " " << jitter.y << std::endl;
+				auto pixel_center = pixel00_loc + (x * pixel_delta_u) + (y * pixel_delta_v);
+				auto ray_direction = pixel_center - scene.camera.center;
+				double3 jitter{random_in_unit_disk() * scene.jitter_radius, 0}; // make it into a vec3 so its easier to add in next line
+				auto ray_origin = pixel_center + jitter;
+				ray = Ray(ray_origin, ray_direction);
 			}
 
 			avg_z_depth = avg_z_depth / scene.samples_per_pixel;
