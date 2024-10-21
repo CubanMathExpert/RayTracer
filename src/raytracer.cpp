@@ -53,10 +53,9 @@ void Raytracer::render(const Scene& scene, Frame* output)
 
 	// @@@@@@ VOTRE CODE ICI
 	// Calculez les paramètres de la caméra pour les rayons.
-
-	double3 direction = (scene.camera.center - scene.camera.position) / length(scene.camera.center - scene.camera.position); // find way to normalize
-	double3 u = scene.camera.up / length(scene.camera.up); // up vector
-	double3 v = cross(direction, u) / length(cross(direction, u)); // right vector
+	double3 direction = normalize(scene.camera.center - scene.camera.position); // find way to normalize
+	double3 viewport_u = -normalize(scene.camera.up) ; // up vector
+	double3 viewport_v = normalize(cross(direction, viewport_u)); // right vector
 	double distance = scene.camera.z_near; // position du plan de projection
 
 	// view volume
@@ -67,8 +66,12 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	double bottomPlane = -topPlane;
 	
 	// deltas pour separation des pixels?
-	double du = (rightPlane - leftPlane) / scene.resolution[0];
-	double dv = (topPlane - bottomPlane) / scene.resolution[1];
+	double pixel_delta_u = (rightPlane - leftPlane) / scene.resolution[0];
+	double pixel_delta_v = (topPlane - bottomPlane) / scene.resolution[1];
+
+	auto viewport_upper_left = scene.camera.center - double3(0, 0, scene.camera.focus_distance);
+	std::cout << "Viewport upper left: " << viewport_upper_left.x << " " << viewport_upper_left.y << " " << viewport_upper_left.z << std::endl;
+	double3 zeroPlane = (scene.camera.position + scene.camera.z_near * direction) + (leftPlane * viewport_u) + (topPlane * viewport_v);
 
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
@@ -80,6 +83,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 
 			int avg_z_depth = 0;
 			double3 avg_ray_color{0,0,0};
+			//std::cout << "x: " << x << " y: " << y << std::endl;
 			
 			for(int iray = 0; iray < scene.samples_per_pixel; iray++) {
 				// Génère le rayon approprié pour ce pixel.
@@ -93,6 +97,16 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
 				// Lancez le rayon de manière uniformément aléatoire à l'intérieur du pixel dans la zone délimité par jitter_radius. 
 				//Faites la moyenne des différentes couleurs obtenues suite à la récursion.
+				double2 jitter = random_in_unit_disk() * scene.jitter_radius;
+				double3 pixelPos = zeroPlane + (x + jitter.x) * pixel_delta_v * viewport_v + (y + jitter.y) * pixel_delta_u * viewport_u;
+				ray = Ray(scene.camera.position, normalize(pixelPos - scene.camera.position));
+				double z_depth = scene.camera.z_far;
+
+				trace(scene, ray, ray_depth, &ray_color, &z_depth);
+				avg_z_depth += z_depth;
+				avg_ray_color += ray_color;
+				//std::cout << "Pixel Position: " << pixelPos.x << " " << pixelPos.y << " " << pixelPos.z << std::endl;
+				//std::cout << jitter.x << " " << jitter.y << std::endl;
 			}
 
 			avg_z_depth = avg_z_depth / scene.samples_per_pixel;
