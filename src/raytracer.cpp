@@ -92,6 +92,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				double ray_depth = 0;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
+				double z_depth = scene.camera.z_far;
 
 				// @@@@@@ VOTRE CODE ICI
 				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
@@ -104,7 +105,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				ray = Ray(rayOrigin, rayDirection);
 
 				// trace ray and set values to ray_color and ray_depth
-				trace(scene, ray, ray_depth, &ray_color, &ray_depth);
+				trace(scene, ray, z_depth, &ray_color, &ray_depth);
 
 				avg_ray_color += ray_color;
 				avg_z_depth += ray_depth;
@@ -159,8 +160,12 @@ void Raytracer::trace(const Scene& scene,
 		//
 		// Toutes les géométries sont des surfaces et non pas de volumes.
 
-		// *out_color = 
-		// *out_z_depth =
+
+
+		*out_color = material.color_albedo;
+		*out_z_depth = hit.depth;
+	} else {
+		*out_color = double3{0,0,0};
 	}
 }
 

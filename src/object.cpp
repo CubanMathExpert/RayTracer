@@ -15,6 +15,35 @@ bool Sphere::local_intersect(Ray ray,
 							 double t_min, double t_max, 
 							 Intersection *hit) 
 {
+	double3 objectCenter = ray.origin;
+
+	double a = dot(ray.direction, ray.direction);
+	double b = 2 * dot(ray.direction, objectCenter - ray.origin);
+	double c = dot(objectCenter - ray.origin, objectCenter - ray.origin) - radius * radius;
+	double v;
+
+	double discriminant = b * b - 4 * a * c;
+	// no solutions
+	if (discriminant < 0) {
+		return false;
+	} 
+	else if (discriminant > 0) {
+		double t = (-b - sqrt(discriminant)) / (2 * a);
+		if (t < t_min || t > t_max) {
+			t = (-b + sqrt(discriminant)) / (2 * a);
+			if (t < t_min || t > t_max) {
+				return false;
+			}
+		}
+
+		hit->depth = t;
+		hit->position = ray.origin + t * ray.direction;
+		hit->normal = normalize(hit->position);
+		
+
+		return true;
+	}
+
 	return false;
 }
 
