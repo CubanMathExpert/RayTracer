@@ -14,7 +14,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	// Vous devez utiliser la scène de test portho.ray pour utiliser cette caméra. 
 	// Notez que votre code de caméra ne doit pas être basé sur ce code de caméra. Ce code n’est là que pour prendre en compte le développement initial du test d’intersection.
 	// Pour utiliser cette caméra, vous devez supprimer les commentaires qui rendent inactive cette partie du code, et mettre en commentaires la boucle d’image originale.
-
+	/*
 	CameraOrthographic camOrth;
 	double3 uVec{ 0,1,0 };
 	double3 vVec{ 0,0,1 };
@@ -47,7 +47,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 			output->set_depth_pixel(x, y, itHits);
 		}
 	}
-
+	*/
 	//---------------------------------------------------------------------------------------------------------------
 
 

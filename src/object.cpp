@@ -15,36 +15,64 @@ bool Sphere::local_intersect(Ray ray,
 							 double t_min, double t_max, 
 							 Intersection *hit) 
 {
-	double3 objectCenter = ray.origin;
 
 	double a = dot(ray.direction, ray.direction);
-	double b = 2 * dot(ray.direction, objectCenter - ray.origin);
-	double c = dot(objectCenter - ray.origin, objectCenter - ray.origin) - radius * radius;
-	double v;
+	double b = 2 * dot(ray.direction, ray.origin);
+	double c = dot(ray.origin, ray.origin) - pow(radius, 2);
+	double t;
 
 	double discriminant = b * b - 4 * a * c;
+
 	// no solutions
-	if (discriminant < 0) {
+	if (discriminant < 0) 
+	{
 		return false;
 	} 
-	else if (discriminant > 0) {
-		double t = (-b - sqrt(discriminant)) / (2 * a);
-		if (t < t_min || t > t_max) {
-			t = (-b + sqrt(discriminant)) / (2 * a);
-			if (t < t_min || t > t_max) {
-				return false;
+	// one solution
+	else if (discriminant == 0) 
+	{
+		double temp = -b / (2 * a); // valeur de t pour la seule collision
+		if (temp < t_max && temp > t_min)
+		{
+			t = temp;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	//two solutions
+	else
+	{
+		// les deux valeurs possibles de t
+		double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+		double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+
+		// les deux t sont valides
+		if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max)
+		{
+			if (temp1 < temp2)
+			{
+				t = temp1;
+			}
+			else
+			{
+				t = temp2;
 			}
 		}
-
-		hit->depth = t;
-		hit->position = ray.origin + t * ray.direction;
-		hit->normal = normalize(hit->position);
+		else
+		{
+			return false;
+		}
 		
-
-		return true;
 	}
 
-	return false;
+	// update the hit information
+	hit->depth = t;
+	hit->position = ray.origin + t * ray.direction;
+	hit->normal = normalize(hit->position);
+
+	return true;
 }
 
 // @@@@@@ VOTRE CODE ICI
