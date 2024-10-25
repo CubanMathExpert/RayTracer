@@ -1,7 +1,7 @@
 #Meta argument for the actual scene
 container "Naive"
 dimension 640 480
-samples_per_pixel 5
+samples_per_pixel 50
 jitter_radius 0.5
 max_ray_depth 2
 ambient_light [0.1 0.1 0.1]

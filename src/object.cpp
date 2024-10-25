@@ -92,7 +92,42 @@ bool Quad::local_intersect(Ray ray,
 							double t_min, double t_max, 
 							Intersection *hit)
 {
-	return false;
+	// Quad properties
+	double3 normal = double3(0, 0, 1);
+	double3 origin = double3(0, 0, 0);
+
+	double parallel = dot(normal, ray.direction);
+	// no collision possible
+	if (parallel < 1e-6)
+	{
+		//std::cout << "Ray is parallel to the quad" << std::endl;
+		return false; // ray is parallel to the quad
+	}
+
+	// compute the intersection with the quad
+	double t = dot(normal, origin - ray.origin) / parallel;
+	// invalid t
+	if (t < t_min || t > t_max)
+	{
+		//std::cout << "Invalid t: " << t << std::endl;
+		return false;
+	}
+
+	double3 intersection = ray.origin + t * ray.direction;
+	// Check if the intersection is within the quad
+	if (fabs(intersection.x) > half_size || fabs(intersection.y) > half_size)
+	{
+		//std::cout << "Intersection out of bounds: " << intersection.x << ", " << intersection.y << std::endl;
+		return false;
+	}
+
+	hit->depth = t;
+	hit->position = intersection;
+	hit->normal = normal;
+
+	//std::cout << "Intersection found at: " << intersection.x << ", " << intersection.y << ", " << intersection.z << std::endl;
+	
+	return true;
 }
 
 // @@@@@@ VOTRE CODE ICI

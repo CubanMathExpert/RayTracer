@@ -1,4 +1,11 @@
 #include "raytracer.h"
+#include <iostream>
+
+// Overload the << operator for double3 type
+std::ostream& operator<<(std::ostream& os, const double3& vec) {
+	os << "{" << vec.x << ", " << vec.y << ", " << vec.z << "}";
+	return os;
+}
 
 void Raytracer::render(const Scene& scene, Frame* output)
 {       
@@ -54,8 +61,8 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	// @@@@@@ VOTRE CODE ICI
 	// Calculez les paramètres de la caméra pour les rayons.
 	double3 cameraDirection = normalize(scene.camera.center - scene.camera.position); // camera direction vector
-	double3 vpUp = -normalize(scene.camera.up) ; // up vector for viewport
-	double3 vpRight = normalize(cross(cameraDirection, vpUp)); // right vector for viewport
+	double3 vpRight = normalize(cross(cameraDirection, scene.camera.up)); // right vector for viewport
+	double3 vpUp = normalize(cross(vpRight, cameraDirection)); // up vector for viewport
 	double vpDistance = scene.camera.z_near; // viewport distance from camera
 
 	// view volume
@@ -66,12 +73,12 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	double bottomPlane = -topPlane;
 	
 	// distance between pixels
-	double pixel_delta_u = (rightPlane - leftPlane) / scene.resolution[0];
-	double pixel_delta_v = (topPlane - bottomPlane) / scene.resolution[1];
+	double pixel_delta_u = (2 * fabs(rightPlane)) / scene.resolution[0];
+	double pixel_delta_v = (2 * topPlane) / scene.resolution[1];
 
 	// starting point of the viewport (upper left)
 	double3 zeroPlane = (scene.camera.position + scene.camera.z_near * cameraDirection) + (leftPlane * vpRight) + (topPlane * vpUp);
-	double3 pixel00 = zeroPlane - (0.5 * pixel_delta_u * vpRight) - (0.5 * pixel_delta_v * vpUp);
+	double3 pixel00 = zeroPlane + (0.5 * pixel_delta_u * vpRight) - (0.5 * pixel_delta_v * vpUp);
 
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
@@ -89,7 +96,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Génère le rayon approprié pour ce pixel.
 				Ray ray;
 				// Initialise la profondeur de récursivité du rayon.
-				double ray_depth = 0;
+				int ray_depth = 0;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
 				double z_depth = scene.camera.z_far;
@@ -98,22 +105,27 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
 				// Lancez le rayon de manière uniformément aléatoire à l'intérieur du pixel dans la zone délimité par jitter_radius. 
 				//Faites la moyenne des différentes couleurs obtenues suite à la récursion.
-				auto pixelCenter = pixel00 + (x * pixel_delta_u * vpRight) - (y * pixel_delta_v * vpUp);
+				//double3 rayOrigin = camOrth.minPosition + uVec * x_shift * x + vVec * y_shift * y;
+				//auto pixelCenter = scene.camera.position + (x * pixel_delta_u * vpRight) - (y * pixel_delta_v * vpUp);
 				double3 jitter{random_in_unit_disk() * scene.jitter_radius, 0};
-				auto rayOrigin = pixelCenter + jitter;
-				auto rayDirection = normalize(rayOrigin - scene.camera.position);
+				double3 pxy = pixel00 + (x + jitter.x) * pixel_delta_u * vpRight - (y + jitter.y) * pixel_delta_v * vpUp;
+				auto rayOrigin = scene.camera.position;
+				auto rayDirection = normalize(pxy - scene.camera.position);
 				ray = Ray(rayOrigin, rayDirection);
 
 				// trace ray and set values to ray_color and ray_depth
-				trace(scene, ray, z_depth, &ray_color, &ray_depth);
+				trace(scene, ray, ray_depth, &ray_color, &z_depth);
 
 				avg_ray_color += ray_color;
-				avg_z_depth += ray_depth;
+				avg_z_depth += z_depth;
 
 			}
 
 			avg_z_depth = avg_z_depth / scene.samples_per_pixel;
 			avg_ray_color = avg_ray_color / scene.samples_per_pixel;
+
+			//std::cout << avg_ray_color << std::endl;
+			//std::cout << avg_z_depth << std::endl;
 
 			// Test de profondeur
 			if(avg_z_depth >= scene.camera.z_near && avg_z_depth <= scene.camera.z_far && 
@@ -164,7 +176,9 @@ void Raytracer::trace(const Scene& scene,
 
 		*out_color = material.color_albedo;
 		*out_z_depth = hit.depth;
-	} else {
+	} 
+	else 
+	{
 		*out_color = double3{0,0,0};
 	}
 }
