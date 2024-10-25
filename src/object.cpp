@@ -277,7 +277,7 @@ bool Mesh::intersect_triangle(Ray  ray,
 	// NOTE : hit.depth est la profondeur de l'intersection actuellement la plus proche,
 	// donc n'acceptez pas les intersections qui occurent plus loin que cette valeur.
 	// on va faire un plan par dessus le triangle 
-	double3 normal = {0, 0, 1}; 
+	double3 normal = normalize(cross(p0 - p1, p2 - p1)); 
 	double3 origin = {0, 0, 0};
 
 	double t;
