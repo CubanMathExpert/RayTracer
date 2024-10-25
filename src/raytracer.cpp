@@ -62,7 +62,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	// Calculez les paramètres de la caméra pour les rayons.
 	double3 cameraDirection = normalize(scene.camera.center - scene.camera.position); // camera direction vector
 	double3 vpRight = normalize(cross(cameraDirection, scene.camera.up)); // right vector for viewport
-	double3 vpUp = normalize(cross(vpRight, cameraDirection)); // up vector for viewport
+	double3 vpUp = -normalize(cross(vpRight, cameraDirection)); // up vector for viewport
 	double vpDistance = scene.camera.z_near; // viewport distance from camera
 
 	// view volume
