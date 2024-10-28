@@ -146,10 +146,11 @@ bool Cylinder::local_intersect(Ray ray,
 							   Intersection *hit)
 {
 	// Cylinder properties
-	double a = pow(ray.direction.x, 2) + pow(ray.direction.y, 2);
-	double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.y * ray.origin.y);
-	double c = pow(ray.origin.x, 2) + pow(ray.origin.y, 2) - pow(radius, 2);
+	double a = pow(ray.direction.x, 2) + pow(ray.direction.z, 2);
+	double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.z * ray.origin.z);
+	double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
 	double t;
+	bool twoHits = false;
 
 	double discriminant = b * b - 4 * a * c;
 	// no solutions
@@ -189,25 +190,57 @@ bool Cylinder::local_intersect(Ray ray,
 				t = temp2;
 			}
 		}
+		else if (temp1 > t_min && temp1 < t_max)
+        {
+            t = temp1;
+        }
+        else if (temp2 > t_min && temp2 < t_max)
+        {
+            t = temp2;
+        }
 		else
 		{
 			return false;
 		}
 	}
 
-	// Check if the intersection point is within the cylinder's height
+	// check if the intersection point is within the cylinder's height
     double y = ray.origin.y + t * ray.direction.y;
     if (y >= -half_height && y < half_height) 
 	{
         hit->depth = t;
 		hit->position = ray.origin + t * ray.direction;
-		hit->normal = normalize(double3(hit->position.x, hit->position.y, 0));
+		hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
 		return true;
 	}
 
-	return false;
+	// check for intersection with the inside of the cylinder
+    double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+    double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+    if (temp1 > t_min && temp1 < t_max)
+    {
+        t = temp1;
+    }
+    else if (temp2 > t_min && temp2 < t_max)
+    {
+        t = temp2;
+    }
+    else
+    {
+        return false;
+    }
 
-	
+    y = ray.origin.y + t * ray.direction.y;
+    if (y >= -half_height && y < half_height)
+    {
+        hit->depth = t;
+        hit->position = ray.origin + t * ray.direction;
+        hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
+        return true;
+    }
+
+    return false;
+
 }
 
 // @@@@@@ VOTRE CODE ICI
