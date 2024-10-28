@@ -1,4 +1,11 @@
 #include "raytracer.h"
+#include <iostream>
+
+// Overload the << operator for double3 type
+std::ostream& operator<<(std::ostream& os, const double3& vec) {
+	os << "{" << vec.x << ", " << vec.y << ", " << vec.z << "}";
+	return os;
+}
 
 void Raytracer::render(const Scene& scene, Frame* output)
 {       
@@ -14,13 +21,14 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	// Vous devez utiliser la scène de test portho.ray pour utiliser cette caméra. 
 	// Notez que votre code de caméra ne doit pas être basé sur ce code de caméra. Ce code n’est là que pour prendre en compte le développement initial du test d’intersection.
 	// Pour utiliser cette caméra, vous devez supprimer les commentaires qui rendent inactive cette partie du code, et mettre en commentaires la boucle d’image originale.
-
-	/*CameraOrthographic camOrth;
+	/*
+	CameraOrthographic camOrth;
 	double3 uVec{ 0,1,0 };
 	double3 vVec{ 0,0,1 };
 	double y_shift = 2.0 / scene.resolution[1];
 	double x_shift = 2.0 / scene.resolution[0];
 
+	// scan the pixels
 	for (int y = 0; y < scene.resolution[1]; y++) {
 		if (y % 40) {
 			std::cout << "\rScanlines completed: " << y << "/" << scene.resolution[1] << '\r';
@@ -45,14 +53,32 @@ void Raytracer::render(const Scene& scene, Frame* output)
 			output->set_color_pixel(x, y, color);
 			output->set_depth_pixel(x, y, itHits);
 		}
-	}*/
-
+	}
+	*/
 	//---------------------------------------------------------------------------------------------------------------
 
 
 	// @@@@@@ VOTRE CODE ICI
 	// Calculez les paramètres de la caméra pour les rayons.
+	double3 cameraDirection = normalize(scene.camera.center - scene.camera.position); // camera direction vector
+	double3 vpRight = normalize(cross(cameraDirection, scene.camera.up)); // right vector for viewport
+	double3 vpUp = -normalize(cross(vpRight, cameraDirection)); // up vector for viewport
+	double vpDistance = scene.camera.z_near; // viewport distance from camera
+
+	// view volume
+	// the view is orthogonal which makes the view volume a box, easier to compute (t,b,l,r)
+	double topPlane = vpDistance * tan(deg2rad(scene.camera.fovy / 2));
+	double rightPlane = topPlane * scene.camera.aspect; // why multiply with aspect?
+	double leftPlane = -rightPlane;
+	double bottomPlane = -topPlane;
 	
+	// distance between pixels
+	double pixel_delta_u = (2 * fabs(rightPlane)) / scene.resolution[0];
+	double pixel_delta_v = (2 * topPlane) / scene.resolution[1];
+
+	// starting point of the viewport (upper left)
+	double3 zeroPlane = (scene.camera.position + scene.camera.z_near * cameraDirection) + (leftPlane * vpRight) + (topPlane * vpUp);
+	double3 pixel00 = zeroPlane + (0.5 * pixel_delta_u * vpRight) - (0.5 * pixel_delta_v * vpUp);
 
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
@@ -62,8 +88,9 @@ void Raytracer::render(const Scene& scene, Frame* output)
 
         for(int x = 0; x < scene.resolution[0]; x++) {
 
-			int avg_z_depth = 0;
+			double avg_z_depth = 0; // changed this to double
 			double3 avg_ray_color{0,0,0};
+			//std::cout << "x: " << x << " y: " << y << std::endl;
 			
 			for(int iray = 0; iray < scene.samples_per_pixel; iray++) {
 				// Génère le rayon approprié pour ce pixel.
@@ -72,15 +99,33 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				int ray_depth = 0;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
+				double z_depth = scene.camera.z_far;
 
 				// @@@@@@ VOTRE CODE ICI
 				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
 				// Lancez le rayon de manière uniformément aléatoire à l'intérieur du pixel dans la zone délimité par jitter_radius. 
 				//Faites la moyenne des différentes couleurs obtenues suite à la récursion.
+				//double3 rayOrigin = camOrth.minPosition + uVec * x_shift * x + vVec * y_shift * y;
+				//auto pixelCenter = scene.camera.position + (x * pixel_delta_u * vpRight) - (y * pixel_delta_v * vpUp);
+				double3 jitter{random_in_unit_disk() * scene.jitter_radius, 0};
+				double3 pxy = pixel00 + (x + jitter.x) * pixel_delta_u * vpRight - (y + jitter.y) * pixel_delta_v * vpUp;
+				auto rayOrigin = scene.camera.position;
+				auto rayDirection = normalize(pxy - scene.camera.position);
+				ray = Ray(rayOrigin, rayDirection);
+
+				// trace ray and set values to ray_color and ray_depth
+				trace(scene, ray, ray_depth, &ray_color, &z_depth);
+
+				avg_ray_color += ray_color;
+				avg_z_depth += z_depth;
+
 			}
 
 			avg_z_depth = avg_z_depth / scene.samples_per_pixel;
 			avg_ray_color = avg_ray_color / scene.samples_per_pixel;
+
+			//std::cout << avg_ray_color << std::endl;
+			//std::cout << avg_z_depth << std::endl;
 
 			// Test de profondeur
 			if(avg_z_depth >= scene.camera.z_near && avg_z_depth <= scene.camera.z_far && 
@@ -127,8 +172,14 @@ void Raytracer::trace(const Scene& scene,
 		//
 		// Toutes les géométries sont des surfaces et non pas de volumes.
 
-		// *out_color = 
-		// *out_z_depth =
+
+
+		*out_color = material.color_albedo;
+		*out_z_depth = hit.depth;
+	} 
+	else 
+	{
+		*out_color = double3{0,0,0};
 	}
 }
 

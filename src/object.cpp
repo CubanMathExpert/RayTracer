@@ -15,7 +15,64 @@ bool Sphere::local_intersect(Ray ray,
 							 double t_min, double t_max, 
 							 Intersection *hit) 
 {
-	return false;
+
+	double a = dot(ray.direction, ray.direction);
+	double b = 2 * dot(ray.direction, ray.origin);
+	double c = dot(ray.origin, ray.origin) - pow(radius, 2);
+	double t;
+
+	double discriminant = b * b - 4 * a * c;
+
+	// no solutions
+	if (discriminant < EPSILON) 
+	{
+		return false;
+	} 
+	// one solution
+	else if (discriminant == 0) 
+	{
+		double temp = -b / (2 * a); // valeur de t pour la seule collision
+		if (temp < t_max && temp > t_min)
+		{
+			t = temp;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	//two solutions
+	else
+	{
+		// les deux valeurs possibles de t
+		double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+		double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+
+		// les deux t sont valides
+		if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max)
+		{
+			if (temp1 < temp2)
+			{
+				t = temp1;
+			}
+			else
+			{
+				t = temp2;
+			}
+		}
+		else
+		{
+			return false;
+		}
+		
+	}
+
+	// update the hit information
+	hit->depth = t;
+	hit->position = ray.origin + t * ray.direction;
+	hit->normal = normalize(hit->position);
+
+	return true;
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -35,7 +92,39 @@ bool Quad::local_intersect(Ray ray,
 							double t_min, double t_max, 
 							Intersection *hit)
 {
-	return false;
+	// Quad properties
+	double3 normal = double3(0, 0, 1);
+	double3 origin = double3(0, 0, 0);
+
+	double denominator = dot(normal, ray.direction);
+	// no collision possible
+	if (denominator == 0)
+	{
+		//std::cout << "Ray is parallel to the quad" << std::endl;
+		return false; // ray is parallel to the quad
+	}
+	else
+	{
+		double t = dot(normal, origin - ray.origin) / denominator;
+		if (t < t_min || t > t_max)
+		{
+			return false;
+		}
+
+		double3 intersection = ray.origin + t * ray.direction;
+		if (intersection.x < -half_size || intersection.x > half_size || intersection.y < -half_size || intersection.y > half_size)
+		{
+			return false;
+		}
+
+		hit->depth = t;
+		hit->position = intersection;
+		hit->normal = normal;
+		hit->uv = double2((intersection.x + half_size) / (2 * half_size), (intersection.y + half_size) / (2 * half_size));
+	}
+
+	
+	return true;
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -56,7 +145,102 @@ bool Cylinder::local_intersect(Ray ray,
 							   double t_min, double t_max, 
 							   Intersection *hit)
 {
+	// Cylinder properties
+	double a = pow(ray.direction.x, 2) + pow(ray.direction.z, 2);
+	double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.z * ray.origin.z);
+	double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
+	double t;
+	bool twoHits = false;
+
+	double discriminant = b * b - 4 * a * c;
+	// no solutions
+	if (discriminant < EPSILON)
+	{
+		return false;
+	}
+	// one solution
+	else if (discriminant == 0)
+	{
+		double temp = -b / (2 * a); // valeur de t pour la seule collision
+		if (temp < t_max && temp > t_min)
+		{
+			t = temp;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	// two solutions
+	else 
+	{
+		// les deux valeurs possibles de t
+		double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+		double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+
+		// les deux t sont valides
+		if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max)
+		{
+			if (temp1 < temp2)
+			{
+				t = temp1;
+			}
+			else
+			{
+				t = temp2;
+			}
+		}
+		else if (temp1 > t_min && temp1 < t_max)
+        {
+            t = temp1;
+        }
+        else if (temp2 > t_min && temp2 < t_max)
+        {
+            t = temp2;
+        }
+		else
+		{
+			return false;
+		}
+	}
+
+	// check if the intersection point is within the cylinder's height
+    double y = ray.origin.y + t * ray.direction.y;
+    if (y >= -half_height && y < half_height) 
+	{
+        hit->depth = t;
+		hit->position = ray.origin + t * ray.direction;
+		hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
+		return true;
+	}
+
+	// check for intersection with the inside of the cylinder
+    double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+    double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+    if (temp1 > t_min && temp1 < t_max)
+    {
+        t = temp1;
+    }
+    else if (temp2 > t_min && temp2 < t_max)
+    {
+        t = temp2;
+    }
+    else
+    {
+        return false;
+    }
+
+    y = ray.origin.y + t * ray.direction.y;
+    if (y >= -half_height && y < half_height)
+    {
+        hit->depth = t;
+        hit->position = ray.origin + t * ray.direction;
+        hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
+        return true;
+    }
+
     return false;
+
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -77,7 +261,22 @@ bool Mesh::local_intersect(Ray ray,
 						   double t_min, double t_max, 
 						   Intersection* hit)
 {
-	return false;
+
+	for (auto tri : triangles)
+	{
+		if (intersect_triangle(ray, t_min, t_max, tri, hit))
+		{
+			if (hit->depth < t_max)
+			{
+				t_max = hit->depth;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -110,6 +309,48 @@ bool Mesh::intersect_triangle(Ray  ray,
 	//
 	// NOTE : hit.depth est la profondeur de l'intersection actuellement la plus proche,
 	// donc n'acceptez pas les intersections qui occurent plus loin que cette valeur.
+	// on va faire un plan par dessus le triangle 
+	double3 normal = normalize(cross(p0 - p1, p2 - p1)); 
+	double3 origin = {0, 0, 0};
+
+	double t;
+	double3 intersection;
+
+	double denominator = dot(normal, ray.direction);
+	// do we intersect plane containing triangle ?
+	// make a fake plane around the triangle that is of size 
+	// 2 * length (p2 - p1) and 2 * length (p0 - p1)
+	if (denominator == 0)
+	{
+		return false; // ray is parallel to the quad
+	}
+	else
+	{
+		t = dot(normal, origin - ray.origin) / denominator;
+		if (t < t_min || t > t_max)
+		{
+			return false;
+		}
+
+		intersection = ray.origin + t * ray.direction;
+		if (intersection.x < -length(p2 - p1) || intersection.x > length(p2 - p1) || intersection.y < -length(p0 - p1) || intersection.y > length(p0 - p1))
+		{
+			return false;
+		}
+		
+	}
+
+	// Check intersection is within the triangle
+	double condition1 = dot(cross(p1 - p0, intersection - p0), normal);
+	double condition2 = dot(cross(p2 - p1, intersection - p1), normal);
+	double condition3 = dot(cross(p0 - p2, intersection - p2), normal);
+	if (condition1 >= 0 && condition2 >= 0 && condition3 >= 0)
+	{
+		hit->depth = t;
+		hit->position = intersection;
+		hit->normal = normal;
+		return true;
+	}
 
 	return false;
 }
