@@ -262,21 +262,20 @@ bool Mesh::local_intersect(Ray ray,
 						   Intersection* hit)
 {
 
-	for (auto tri : triangles)
-	{
-		if (intersect_triangle(ray, t_min, t_max, tri, hit))
-		{
-			if (hit->depth < t_max)
-			{
-				t_max = hit->depth;
-			}
-		}
-		else
-		{
-			return false;
-		}
-	}
-	return true;
+	bool hit_anything = false;
+    Intersection temp_hit;
+
+    for (auto const& tri : triangles) {
+        if (intersect_triangle(ray, t_min, t_max, tri, &temp_hit)) {
+            if (temp_hit.depth < t_max) {
+                t_max = temp_hit.depth;
+                *hit = temp_hit;
+                hit_anything = true;
+            }
+        }
+    }
+
+    return hit_anything;
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -310,41 +309,38 @@ bool Mesh::intersect_triangle(Ray  ray,
 	// NOTE : hit.depth est la profondeur de l'intersection actuellement la plus proche,
 	// donc n'acceptez pas les intersections qui occurent plus loin que cette valeur.
 	// on va faire un plan par dessus le triangle 
-	double3 normal = normalize(cross(p0 - p1, p2 - p1)); 
+	double3 normal = normalize(cross(p1 - p0, p2 - p0)); 
 	double3 origin = {0, 0, 0};
-
-	double t;
 	double3 intersection;
 
 	double denominator = dot(normal, ray.direction);
 	// do we intersect plane containing triangle ?
 	// make a fake plane around the triangle that is of size 
 	// 2 * length (p2 - p1) and 2 * length (p0 - p1)
-	if (denominator == 0)
+	if (fabs(denominator) < EPSILON)
 	{
 		return false; // ray is parallel to the quad
 	}
-	else
-	{
-		t = dot(normal, origin - ray.origin) / denominator;
-		if (t < t_min || t > t_max)
-		{
-			return false;
-		}
 
-		intersection = ray.origin + t * ray.direction;
-		if (intersection.x < -length(p2 - p1) || intersection.x > length(p2 - p1) || intersection.y < -length(p0 - p1) || intersection.y > length(p0 - p1))
-		{
-			return false;
-		}
-		
+	double t = dot(normal, p0 - ray.origin) / denominator;
+	if (t < t_min || t > t_max)
+	{
+		return false;
 	}
 
-	// Check intersection is within the triangle
-	double condition1 = dot(cross(p1 - p0, intersection - p0), normal);
-	double condition2 = dot(cross(p2 - p1, intersection - p1), normal);
-	double condition3 = dot(cross(p0 - p2, intersection - p2), normal);
-	if (condition1 >= 0 && condition2 >= 0 && condition3 >= 0)
+	intersection = ray.origin + t * ray.direction;
+
+	double3 edge0 = p1 - p0;
+	double3 edge1 = p2 - p1;
+	double3 edge2 = p0 - p2;
+
+	double3 C0 = intersection - p0;
+	double3 C1 = intersection - p1;
+	double3 C2 = intersection - p2;
+
+	if (dot(normal, cross(edge0, C0)) >= 0 &&
+	   dot(normal, cross(edge1, C1)) >= 0 &&
+	   dot(normal, cross(edge2, C2)) >= 0)
 	{
 		hit->depth = t;
 		hit->position = intersection;
