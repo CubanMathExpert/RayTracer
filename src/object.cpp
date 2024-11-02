@@ -27,51 +27,26 @@ bool Sphere::local_intersect(Ray ray,
 	if (discriminant < EPSILON) 
 	{
 		return false;
-	} 
-	// one solution
-	else if (discriminant == 0) 
-	{
-		double temp = -b / (2 * a); // valeur de t pour la seule collision
-		if (temp < t_max && temp > t_min)
-		{
-			t = temp;
-		}
-		else
-		{
-			return false;
-		}
 	}
-	//two solutions
-	else
-	{
-		// les deux valeurs possibles de t
-		double temp1 = (-b + sqrt(discriminant)) / (2 * a);
-		double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+	// les deux valeurs possibles de t
+	double sqrt = std::sqrt(discriminant);
+	double temp1 = (-b + sqrt) / (2 * a);
+	double temp2 = (-b - sqrt) / (2 * a);
 
-		// les deux t sont valides
-		if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max)
-		{
-			if (temp1 < temp2)
-			{
-				t = temp1;
-			}
-			else
-			{
-				t = temp2;
-			}
-		}
-		else
-		{
-			return false;
-		}
-		
+	if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max){
+		t = std::min(temp1, temp2); // two sol
+	}else if (temp1 <t_max && temp1 > t_min){
+		t = temp1; // one sol 
+	}else if (temp2 < t_max && temp2 > t_min){
+		t = temp2; // one sol 
+	}else{
+		return false;
 	}
 
 	// update the hit information
 	hit->depth = t;
 	hit->position = ray.origin + t * ray.direction;
 	hit->normal = normalize(hit->position);
-
 	return true;
 }
 
@@ -79,7 +54,10 @@ bool Sphere::local_intersect(Ray ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour la sphère.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Sphere::compute_aabb() {
-	return Object::compute_aabb();
+	//c'est la construction d'un AABB pour une sphère
+	double3 min = {-radius, -radius, -radius};
+    double3 max = {radius, radius, radius};
+    return AABB{min, max};
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -131,6 +109,10 @@ bool Quad::local_intersect(Ray ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le quad (rectangle).
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire.
 AABB Quad::compute_aabb() {
+	double epsilon = 1e-6;
+	//c'est la construction d'un AABB pour un quad
+	double3 min = {-half_size, -half_size, -epsilon}; 
+	double3 max = {half_size, half_size, epsilon}; 
 	return Object::compute_aabb();
 	//return Object::compute_aabb();
 }
@@ -151,103 +133,49 @@ bool Cylinder::local_intersect(Ray ray,
 	double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
 	double t;
 	bool twoHits = false;
-
-	double discriminant = b * b - 4 * a * c;
-	// no solutions
-	if (discriminant < EPSILON)
-	{
-		return false;
-	}
-	// one solution
-	else if (discriminant == 0)
-	{
-		double temp = -b / (2 * a); // valeur de t pour la seule collision
-		if (temp < t_max && temp > t_min)
-		{
-			t = temp;
-		}
-		else
-		{
-			return false;
-		}
-	}
-	// two solutions
-	else 
-	{
-		// les deux valeurs possibles de t
-		double temp1 = (-b + sqrt(discriminant)) / (2 * a);
-		double temp2 = (-b - sqrt(discriminant)) / (2 * a);
-
-		// les deux t sont valides
-		if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max)
-		{
-			if (temp1 < temp2)
-			{
-				t = temp1;
-			}
-			else
-			{
-				t = temp2;
-			}
-		}
-		else if (temp1 > t_min && temp1 < t_max)
-        {
-            t = temp1;
-        }
-        else if (temp2 > t_min && temp2 < t_max)
-        {
-            t = temp2;
-        }
-		else
-		{
-			return false;
-		}
-	}
-
-	// check if the intersection point is within the cylinder's height
-    double y = ray.origin.y + t * ray.direction.y;
-    if (y >= -half_height && y < half_height) 
-	{
-        hit->depth = t;
-		hit->position = ray.origin + t * ray.direction;
-		hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
-		return true;
-	}
-
-	// check for intersection with the inside of the cylinder
-    double temp1 = (-b + sqrt(discriminant)) / (2 * a);
-    double temp2 = (-b - sqrt(discriminant)) / (2 * a);
-    if (temp1 > t_min && temp1 < t_max)
-    {
-        t = temp1;
-    }
-    else if (temp2 > t_min && temp2 < t_max)
-    {
-        t = temp2;
-    }
-    else
-    {
-        return false;
+	// Calculate discriminant
+    double discriminant = b * b - 4 * a * c;
+    if (discriminant < EPSILON) {
+        return false; // No real roots, ray misses the cylinder
     }
 
-    y = ray.origin.y + t * ray.direction.y;
-    if (y >= -half_height && y < half_height)
-    {
-        hit->depth = t;
-        hit->position = ray.origin + t * ray.direction;
-        hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
+    // Calculate both roots of the quadratic equation
+    double sqrtDiscriminant = sqrt(discriminant);
+    double t1 = (-b - sqrtDiscriminant) / (2 * a);
+    double t2 = (-b + sqrtDiscriminant) / (2 * a);
+
+    // Ensure t1 is the smaller value
+    if (t1 > t2) std::swap(t1, t2);
+
+    // Check if t1 is within bounds and if the intersection is within the cylinder's height
+    double y1 = ray.origin.y + t1 * ray.direction.y;
+    if (t1 > t_min && t1 < t_max && y1 >= -half_height && y1 <= half_height) {
+        hit->depth = t1;
+        hit->position = ray.origin + t1 * ray.direction;
+        hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
         return true;
     }
 
-    return false;
+    // Check t2 if t1 was out of bounds or not within the height
+    double y2 = ray.origin.y + t2 * ray.direction.y;
+    if (t2 > t_min && t2 < t_max && y2 >= -half_height && y2 <= half_height) {
+        hit->depth = t2;
+        hit->position = ray.origin + t2 * ray.direction;
+        hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
+        return true;
+    }
 
+    return false; // No valid intersection within bounds and height
 }
 
 // @@@@@@ VOTRE CODE ICI
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le cylindre.
-// Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
+// Il fautscr que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Cylinder::compute_aabb() {
-	return Object::compute_aabb();
+	//c'est la construction d'un AABB pour un cylindre
+	double3 min = {-radius, -radius, -half_height};
+    double3 max = {radius, radius, half_height};
+	return AABB{min, max};
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -355,5 +283,5 @@ bool Mesh::intersect_triangle(Ray  ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le Mesh.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire.
 AABB Mesh::compute_aabb() {
-	return Object::compute_aabb();
+	return construct_aabb(positions);
 }
