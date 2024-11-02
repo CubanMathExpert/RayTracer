@@ -15,49 +15,6 @@ void Raytracer::render(const Scene& scene, Frame* output)
         z_buffer[i] = scene.camera.z_far; //Anciennement DBL_MAX. À remplacer avec la valeur de scene.camera.z_far
     }
 
-
-	//---------------------------------------------------------------------------------------------------------------
-	// Nous vous fournissons ci-bas du code pour une caméra orthographique très simple. Cette caméra peut être utilisée pour tester l’intersection avec la sphère.
-	// Vous devez utiliser la scène de test portho.ray pour utiliser cette caméra. 
-	// Notez que votre code de caméra ne doit pas être basé sur ce code de caméra. Ce code n’est là que pour prendre en compte le développement initial du test d’intersection.
-	// Pour utiliser cette caméra, vous devez supprimer les commentaires qui rendent inactive cette partie du code, et mettre en commentaires la boucle d’image originale.
-	/*
-	CameraOrthographic camOrth;
-	double3 uVec{ 0,1,0 };
-	double3 vVec{ 0,0,1 };
-	double y_shift = 2.0 / scene.resolution[1];
-	double x_shift = 2.0 / scene.resolution[0];
-
-	// scan the pixels
-	for (int y = 0; y < scene.resolution[1]; y++) {
-		if (y % 40) {
-			std::cout << "\rScanlines completed: " << y << "/" << scene.resolution[1] << '\r';
-		}
-
-		for (int x = 0; x < scene.resolution[0]; x++) {
-			double3 color{ 0,0,0 };
-
-			Intersection hit;
-			double3 rayOrigin = camOrth.minPosition + uVec * x_shift * x + vVec * y_shift * y;
-			double3 rayDirection{ 1,0,0 };
-			Ray ray = Ray(rayOrigin, rayDirection);
-			double itHits = 0;
-
-			double z_depth = scene.camera.z_far;
-			if (scene.container->intersect(ray, EPSILON, z_depth, &hit)) {
-				Material& material = ResourceManager::Instance()->materials[hit.key_material];
-				color = material.color_albedo;
-				itHits = 1.0f;
-			}
-
-			output->set_color_pixel(x, y, color);
-			output->set_depth_pixel(x, y, itHits);
-		}
-	}
-	*/
-	//---------------------------------------------------------------------------------------------------------------
-
-
 	// @@@@@@ VOTRE CODE ICI
 	// Calculez les paramètres de la caméra pour les rayons.
 	double3 cameraDirection = normalize(scene.camera.center - scene.camera.position); // camera direction vector

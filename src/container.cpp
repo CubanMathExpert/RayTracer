@@ -23,15 +23,14 @@ bool Naive::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
     Intersection closestIntersection;
 
     for (auto obj : objects) {
-        // Get the AABB for the current object
         AABB objAABB = obj->compute_aabb();
 
-        // First, check if the ray intersects the AABB
+        // Intersection the AABB
         if (!objAABB.intersect(ray, t_min, t_max)) {
-            continue;  // Skip to the next object if no intersection with the AABB
+            continue;  // Skip if no intersection 
         }
 
-        // If there's an AABB intersection, check for an intersection with the actual object
+        // Check actual object
         if (obj->intersect(ray, t_min, t_max, &closestIntersection)) {
             if (closestIntersection.depth < t_max) {
                 t_max = closestIntersection.depth;

@@ -54,9 +54,25 @@ bool Sphere::local_intersect(Ray ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour la sphère.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Sphere::compute_aabb() {
-	//c'est la construction d'un AABB pour une sphère
-	double3 min = {-radius, -radius, -radius};
-    double3 max = {radius, radius, radius};
+	// local elements
+    double3 local_center = {0, 0, 0};
+    double3 local_radius_point = {radius, 0, 0};
+
+    // global elements
+    double4 global_center = mul(transform, {local_center, 1});
+    double4 global_radius_point = mul(transform, {local_radius_point, 0});
+
+    double transformed_radius = length(global_radius_point - global_center);
+
+    // Define the global AABB
+    double3 min = {global_center.x - transformed_radius,
+                   global_center.y - transformed_radius,
+                   global_center.z - transformed_radius};
+
+    double3 max = {global_center.x + transformed_radius,
+                   global_center.y + transformed_radius,
+                   global_center.z + transformed_radius};
+
     return AABB{min, max};
 }
 
@@ -110,11 +126,36 @@ bool Quad::local_intersect(Ray ray,
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire.
 AABB Quad::compute_aabb() {
 	double epsilon = 1e-6;
-	//c'est la construction d'un AABB pour un quad
-	double3 min = {-half_size, -half_size, -epsilon}; 
-	double3 max = {half_size, half_size, epsilon}; 
-	return Object::compute_aabb();
-	//return Object::compute_aabb();
+
+	// Define the four corners of the quad in local space
+	double3 local_corners[4] = {
+		{-half_size, -half_size, 0},
+		{half_size, -half_size, 0},
+		{half_size, half_size, 0},
+		{-half_size, half_size, 0}
+	};
+
+	// Initialize min and max bounds with the first transformed corner
+	double4 first_corner_global = mul(transform, {local_corners[0], 1});
+	double3 min = {first_corner_global.x, first_corner_global.y, first_corner_global.z};
+	double3 max = min;
+
+	// Transform each corner to global space and update min and max bounds
+	for (int i = 1; i < 4; ++i) {
+		double4 global_corner = mul(transform, {local_corners[i], 1});
+		min = {std::min(min.x, global_corner.x),
+		       std::min(min.y, global_corner.y),
+		       std::min(min.z, global_corner.z)};
+		max = {std::max(max.x, global_corner.x),
+		       std::max(max.y, global_corner.y),
+		       std::max(max.z, global_corner.z)};
+	}
+
+	// Expand the AABB slightly in the z direction to account for numerical precision
+	min.z -= epsilon;
+	max.z += epsilon;
+
+	return AABB{min, max};
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -127,27 +168,27 @@ bool Cylinder::local_intersect(Ray ray,
 							   double t_min, double t_max, 
 							   Intersection *hit)
 {
-	// Cylinder properties
+	
 	double a = pow(ray.direction.x, 2) + pow(ray.direction.z, 2);
 	double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.z * ray.origin.z);
 	double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
 	double t;
 	bool twoHits = false;
-	// Calculate discriminant
+
+
     double discriminant = b * b - 4 * a * c;
     if (discriminant < EPSILON) {
-        return false; // No real roots, ray misses the cylinder
+        return false; 
     }
 
-    // Calculate both roots of the quadratic equation
     double sqrtDiscriminant = sqrt(discriminant);
     double t1 = (-b - sqrtDiscriminant) / (2 * a);
     double t2 = (-b + sqrtDiscriminant) / (2 * a);
 
-    // Ensure t1 is the smaller value
+    // We want t1 smaller always 
     if (t1 > t2) std::swap(t1, t2);
 
-    // Check if t1 is within bounds and if the intersection is within the cylinder's height
+    // Check if t1 is within bounds and height
     double y1 = ray.origin.y + t1 * ray.direction.y;
     if (t1 > t_min && t1 < t_max && y1 >= -half_height && y1 <= half_height) {
         hit->depth = t1;
@@ -156,7 +197,7 @@ bool Cylinder::local_intersect(Ray ray,
         return true;
     }
 
-    // Check t2 if t1 was out of bounds or not within the height
+    // Check t2 if t1 out of bounds and height
     double y2 = ray.origin.y + t2 * ray.direction.y;
     if (t2 > t_min && t2 < t_max && y2 >= -half_height && y2 <= half_height) {
         hit->depth = t2;
@@ -165,17 +206,36 @@ bool Cylinder::local_intersect(Ray ray,
         return true;
     }
 
-    return false; // No valid intersection within bounds and height
+    return false;
 }
 
 // @@@@@@ VOTRE CODE ICI
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le cylindre.
 // Il fautscr que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Cylinder::compute_aabb() {
-	//c'est la construction d'un AABB pour un cylindre
-	double3 min = {-radius, -radius, -half_height};
-    double3 max = {radius, radius, half_height};
-	return AABB{min, max};
+    double3 local_center = {0, 0, 0};                    
+    double3 local_radius_point = {radius, 0, 0};         
+    double3 local_top = {0, 0, half_height};                      
+
+    // global space
+    double4 global_center = mul(transform, {local_center, 1});
+    double4 global_radius_point = mul(transform, {local_radius_point, 0});
+    double4 global_top = mul(transform, {local_top, 1});
+
+    // recalculate everything 
+    double transformed_radius = length(global_radius_point - global_center);
+    double transformed_half_height = length(global_top - global_center);
+
+    // define AABB in global space
+    double3 min = {global_center.x - transformed_radius,
+                   global_center.y - transformed_radius,
+                   global_center.z - transformed_half_height};
+
+    double3 max = {global_center.x + transformed_radius,
+                   global_center.y + transformed_radius,
+                   global_center.z + transformed_half_height};
+
+    return AABB{min, max};
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -283,5 +343,13 @@ bool Mesh::intersect_triangle(Ray  ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le Mesh.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire.
 AABB Mesh::compute_aabb() {
-	return construct_aabb(positions);
+	//put all the points in global first
+	std::vector<linalg::aliases::double3> global_positions;
+	for(const auto& point : positions) {
+
+	 double4 global_point = mul( transform, {point.x, point.y, point.z, 1.0});
+	 double3 global_point3 = {global_point.x, global_point.y, global_point.z};
+	 global_positions.push_back(global_point3);
+	}
+	return construct_aabb(global_positions);
 }
