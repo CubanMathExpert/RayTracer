@@ -178,34 +178,29 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 	for (const auto& light : scene.lights)
 	{
 		// Direction et distance vers la lumière
-		double3 light_dir = normalize(light.position - intersection_point);
+		double3 light_direction = normalize(light.position - intersection_point);
 		double light_distance = length(light.position - intersection_point);
 		double light_distance_inverse = 1.0 / light_distance;
 
-		// Vérification de l'ombrage (shadow)
-		bool is_in_shadow = false;
-		/* for (const auto& object : scene.objects)
-		{
-			Ray shadow_ray(intersection_point, light_dir);
-			Intersection shadow_hit;
+		bool in_shadow = false;
+		Ray shadow_ray(intersection_point, light_direction);
+		Intersection shadow_hit;
 
-			// Si un objet est intercepté avant d'atteindre la lumière, le point est dans l'ombre
-			if (object.intersect(shadow_ray, shadow_hit) && shadow_hit.distance < light_distance)
-			{
-				is_in_shadow = true;
-				break;
-			}
+		// Si un objet est intercepté alors aucune lumiere.
+		if (scene.container->intersect(shadow_ray, EPSILON, light_distance, &shadow_hit))
+		{
+			if(length(shadow_hit.position - light.position) > EPSILON) in_shadow = true;
 		}
-		*/
+		
 		// Calcul de l'intensité de la lumière seulement si le point n'est pas dans l'ombre
-		if (!is_in_shadow)
+		if (!in_shadow)
 		{
 			// Diffuse
-			double diff_intensity = std::max(dot(normal, light_dir), 0.0);
+			double diff_intensity = std::max(dot(normal, light_direction), 0.0);
 			double3 diffuse = material.k_diffuse * diff_intensity * material.color_albedo;
 
 			// Spéculaire avec le modèle de Blinn
-			double3 H = normalize(view_dir + light_dir);
+			double3 H = normalize(view_dir + light_direction);
 			double spec_intensity = pow(std::max(dot(normal, H), 0.0), material.shininess);
 			double3 specular = material.k_specular * spec_intensity *
 								(material.metallic*material.color_albedo + (1 - material.metallic));
