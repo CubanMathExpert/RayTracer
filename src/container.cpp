@@ -8,9 +8,32 @@
 //				- S'il y a intersection, ajouter le noeud à ceux à visiter. 
 // - Retourner l'intersection avec la profondeur maximale la plus PETITE.
 bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
-	return false;
-}
+    bool isHit = false;
+    std::vector<BVHNode*> toVisit;
+    toVisit.push_back(root);
 
+    while (!toVisit.empty()) {
+        BVHNode* node = toVisit.back();
+        toVisit.pop_back();
+
+        if (node->aabb.intersect(ray, t_min, t_max)) {
+            if (node->left == nullptr && node->right == nullptr) {
+                Intersection closestIntersection;
+                if (objects[node->idx]->intersect(ray, t_min, t_max, &closestIntersection)) {
+                    if (closestIntersection.depth < t_max) {
+                        t_max = closestIntersection.depth;
+                        *hit = closestIntersection;
+                        isHit = true;
+                    }
+                }
+            } else {
+                toVisit.push_back(node->left);
+                toVisit.push_back(node->right);
+            }
+        }
+    }
+    return isHit;
+}
 
 // @@@@@@ VOTRE CODE ICI
 // - Parcourir tous les objets
