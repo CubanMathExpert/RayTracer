@@ -119,6 +119,8 @@ void Raytracer::trace(const Scene& scene,
 	if(scene.container->intersect(ray,EPSILON,*out_z_depth,&hit)) {		
 		Material& material = ResourceManager::Instance()->materials[hit.key_material];
 
+		// Calculate the local shading at the intersection point
+		double3 local_color = shade(scene, hit);
 		// @@@@@@ VOTRE CODE ICI
 		// Déterminer la couleur associée à la réflection d'un rayon de manière récursive.
 		
@@ -130,8 +132,7 @@ void Raytracer::trace(const Scene& scene,
 		// Toutes les géométries sont des surfaces et non pas de volumes.
 
 
-
-		*out_color = material.color_albedo;
+		*out_color = local_color;
 		*out_z_depth = hit.depth;
 	} 
 	else 
@@ -157,6 +158,68 @@ void Raytracer::trace(const Scene& scene,
 
 double3 Raytracer::shade(const Scene& scene, Intersection hit)
 {
-	// Material& material = ResourceManager::Instance()->materials[hit.key_material]; lorsque vous serez rendu à la partie texture.
-	return double3{0,0,0};
+	// Récupération du matériau
+	Material& material = ResourceManager::Instance()->materials[hit.key_material];
+
+	// La * ka * s(lambda)
+	double3 ambient = scene.ambient_light * material.k_ambient * material.color_albedo;
+
+	// Initialisation de la couleur finale avec la contribution ambiante
+	double3 color = ambient;
+
+	// Récupération de la position du point d'intersection et de la normale
+	double3 intersection_point = hit.position;
+	double3 normal = hit.normal;
+
+	// Récupération de la caméra
+	double3 view_dir = normalize(scene.camera.position - intersection_point);
+
+	// Itérer sur toutes les lumières
+	for (const auto& light : scene.lights)
+	{
+		// Direction et distance vers la lumière
+		double3 light_dir = normalize(light.position - intersection_point);
+		double light_distance = length(light.position - intersection_point);
+		double light_distance_inverse = 1.0 / light_distance;
+
+		// Vérification de l'ombrage (shadow)
+		bool is_in_shadow = false;
+		/* for (const auto& object : scene.objects)
+		{
+			Ray shadow_ray(intersection_point, light_dir);
+			Intersection shadow_hit;
+
+			// Si un objet est intercepté avant d'atteindre la lumière, le point est dans l'ombre
+			if (object.intersect(shadow_ray, shadow_hit) && shadow_hit.distance < light_distance)
+			{
+				is_in_shadow = true;
+				break;
+			}
+		}
+		*/
+		// Calcul de l'intensité de la lumière seulement si le point n'est pas dans l'ombre
+		if (!is_in_shadow)
+		{
+			// Diffuse
+			double diff_intensity = std::max(dot(normal, light_dir), 0.0);
+			double3 diffuse = material.k_diffuse * diff_intensity * material.color_albedo;
+
+			// Spéculaire avec le modèle de Blinn
+			double3 H = normalize(view_dir + light_dir);
+			double spec_intensity = pow(std::max(dot(normal, H), 0.0), material.shininess);
+			double3 specular = material.k_specular * spec_intensity *
+								(material.metallic*material.color_albedo + (1 - material.metallic));
+
+			// Ajout des contributions diffuse et spéculaire avec l'atténuation
+			color += (diffuse + specular) * pow(light_distance_inverse, 2)*light.emission;
+		}
+	}
+	/*
+	// Si une texture est présente, prendre la couleur à la coordonnée UV
+	if (material.has_texture)
+	{
+		color *= ResourceManager::Instance()->getTexture(material.texture_id).sample(hit.uv);
+	}
+	*/
+	return color;
 }
