@@ -27,8 +27,8 @@ bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
                     }
                 }
             } else {
-                toVisit.push_back(node->left);
-                toVisit.push_back(node->right);
+               if(node->left != nullptr) toVisit.push_back(node->left);
+               if(node->right != nullptr) toVisit.push_back(node->right);
             }
         }
     }
