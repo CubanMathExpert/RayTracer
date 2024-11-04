@@ -128,19 +128,22 @@ void Raytracer::trace(const Scene& scene,
 		 // Refraction
         double3 refraction_color = {0, 0, 0};
         if (material.k_refraction > 0.0) {
+			//lapproximation eta = 1.0 / material.refractive_index
             double eta = (dot(ray.direction, hit.normal) < 0) ? (1.0 / material.refractive_index) : material.refractive_index;
             double3 refraction_normal = (dot(ray.direction, hit.normal) < 0) ? hit.normal : -hit.normal;
-
+			//calcul des angles
             double cos_theta_i = -dot(refraction_normal, ray.direction);
             double sin2_theta_t = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
 
-            if (sin2_theta_t <= 1.0) {  // Only proceed if total internal reflection doesn’t occur
+            if (sin2_theta_t <= 1.0) {  // No internal
                 double cos_theta_t = sqrt(1.0 - sin2_theta_t);
                 double3 refraction_direction = eta * ray.direction + (eta * cos_theta_i - cos_theta_t) * refraction_normal;
+				//new ray with right direction 
                 Ray refraction_ray(hit.position - EPSILON * refraction_normal, refraction_direction);
-
+				//pass arguments
                 double3 refracted_color = {0, 0, 0};
                 double refraction_depth = *out_z_depth;
+				//go somewhere else 
                 trace(scene, refraction_ray, ray_depth - 1, &refracted_color, &refraction_depth);
 
                 refraction_color = refracted_color * material.k_refraction;
