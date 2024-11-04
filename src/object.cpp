@@ -47,10 +47,14 @@ bool Sphere::local_intersect(Ray ray,
 	hit->position = ray.origin + t * ray.direction;
 	hit->normal = normalize(hit->position);
 
-	double phi = atan2(hit->position.z, hit->position.x);
+	double phi = atan2(hit->position.x, hit->position.z);
+	if (phi < 0) phi += 2 * M_PI;  
+
 	double theta = acos(hit->position.y / radius);
-	double u = (phi + M_PI) / (2 * M_PI);
-	double v = (M_PI - theta) / M_PI;
+
+	double u = phi / (2 * M_PI); 
+	double v =  (theta / M_PI);
+
 	hit->uv = double2(u, v);
 	return true;
 }
@@ -108,7 +112,7 @@ bool Quad::local_intersect(Ray ray,
 		return false;
 	}
 	double u = (intersection.x + half_size) / (2 * half_size);
-	double v = (intersection.y + half_size) / (2 * half_size);
+	double v = 1-(intersection.y + half_size) / (2 * half_size);
 	//update
 	hit->depth = t;
 	hit->position = intersection;
@@ -214,9 +218,9 @@ bool Cylinder::local_intersect(Ray ray,
         hit->position = ray.origin + t * ray.direction;
         hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
         // Calculate UV coordinates
-        double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI);
-        double v = (y + half_height) / (2 * half_height);
-        hit->uv = double2(u, v);
+		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle around the y-axis
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);           // Height along the y-axis
+		hit->uv = double2(u, v);
         return true;
     }
 
@@ -237,9 +241,9 @@ bool Cylinder::local_intersect(Ray ray,
         hit->position = ray.origin + t * ray.direction;
         hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
         // Calculate UV coordinates
-        double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI);
-        double v = (y + half_height) / (2 * half_height);
-        hit->uv = double2(u, v);
+		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle around the y-axis
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);           // Height along the y-axis
+		hit->uv = double2(u, v);
         return true;
     }
 
@@ -370,24 +374,11 @@ bool Mesh::intersect_triangle(Ray  ray,
 		hit->depth = t;
 		hit->position = intersection;
 		hit->normal = normal;
+		// Interpolation des coordonnées UV à l'aide des coordonnées barycentriques
+        // Assumez que vous avez accès aux coordonnées UV des sommets
+      
 
-		// Calculate UV coordinates using barycentric coordinates
-		double3 edge0 = p1 - p0;
-		double3 edge1 = p2 - p0;
-		double3 edge2 = intersection - p0;
-
-		double d00 = dot(edge0, edge0);
-		double d01 = dot(edge0, edge1);
-		double d11 = dot(edge1, edge1);
-		double d20 = dot(edge2, edge0);
-		double d21 = dot(edge2, edge1);
-
-		double denom = d00 * d11 - d01 * d01;
-		double v = (d11 * d20 - d01 * d21) / denom;
-		double w = (d00 * d21 - d01 * d20) / denom;
-		double u = 1.0 - v - w;
-
-		hit->uv = double2(u, v);
+        
 		return true;
 	}
 

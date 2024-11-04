@@ -134,6 +134,7 @@ void Raytracer::trace(const Scene& scene,
 	}
 }
 
+
 // @@@@@@ VOTRE CODE ICI
 // Veuillez remplir les objectifs suivants:
 // 		* Calculer la contribution des lumières dans la scène.
