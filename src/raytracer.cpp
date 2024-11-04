@@ -158,23 +158,20 @@ void Raytracer::trace(const Scene& scene,
 
 double3 Raytracer::shade(const Scene& scene, Intersection hit)
 {
-	// Récupération du matériau
 	Material& material = ResourceManager::Instance()->materials[hit.key_material];
 
 	// La * ka * s(lambda)
 	double3 ambient = scene.ambient_light * material.k_ambient * material.color_albedo;
-
-	// Initialisation de la couleur finale avec la contribution ambiante
 	double3 color = ambient;
 
-	// Récupération de la position du point d'intersection et de la normale
+	// hit information
 	double3 intersection_point = hit.position;
 	double3 normal = hit.normal;
 
-	// Récupération de la caméra
+	// camera direction
 	double3 view_dir = normalize(scene.camera.position - intersection_point);
-
-	// Itérer sur toutes les lumières
+	
+	// ALL OF THE LIGHTS
 	for (const auto& light : scene.lights)
 	{
 		// Direction et distance vers la lumière
@@ -182,19 +179,31 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 		double light_distance = length(light.position - intersection_point);
 		double light_distance_inverse = 1.0 / light_distance;
 
-		bool in_shadow = false;
-		Ray shadow_ray(intersection_point, light_direction);
-		Intersection shadow_hit;
+		int unoccludedCount = 0;
 
-		// Si un objet est intercepté alors aucune lumiere.
-		if (scene.container->intersect(shadow_ray, EPSILON, light_distance, &shadow_hit))
+		int echantillonnage = 5;
+		for (int i = 0; i < echantillonnage; i++)
 		{
-			if(length(shadow_hit.position - light.position) > EPSILON) in_shadow = true;
+			double3 jitter = double3{random_in_unit_disk(), 0} * light.radius;
+			double3 jittered_light_position = light.position + jitter;
+			double3 jittered_light_direction = normalize(jittered_light_position - intersection_point);
+			double jittered_light_distance = length(jittered_light_position - intersection_point);
+
+			Ray shadow_ray(intersection_point, jittered_light_direction);
+			Intersection shadow_hit;
+
+			//all of the shadows 
+			if (!scene.container->intersect(shadow_ray, EPSILON, jittered_light_distance, &shadow_hit))
+			{
+				unoccludedCount++;
+			}
 		}
 		
 		// Calcul de l'intensité de la lumière seulement si le point n'est pas dans l'ombre
-		if (!in_shadow)
+		if (unoccludedCount > 0)
 		{
+			double shadow_factor = static_cast<double>(unoccludedCount) / echantillonnage;
+
 			// Diffuse
 			double diff_intensity = std::max(dot(normal, light_direction), 0.0);
 			double3 diffuse = material.k_diffuse * diff_intensity * material.color_albedo;
@@ -203,10 +212,10 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 			double3 H = normalize(view_dir + light_direction);
 			double spec_intensity = pow(std::max(dot(normal, H), 0.0), material.shininess);
 			double3 specular = material.k_specular * spec_intensity *
-								(material.metallic*material.color_albedo + (1 - material.metallic));
+								(material.metallic * material.color_albedo + (1 - material.metallic));
 
 			// Ajout des contributions diffuse et spéculaire avec l'atténuation
-			color += (diffuse + specular) * pow(light_distance_inverse, 2)*light.emission;
+			color += (diffuse + specular) * pow(light_distance_inverse, 2) * light.emission * shadow_factor;
 		}
 	}
 	/*
