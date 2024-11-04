@@ -42,11 +42,16 @@ bool Sphere::local_intersect(Ray ray,
 	}else{
 		return false;
 	}
-
 	// update the hit information
 	hit->depth = t;
 	hit->position = ray.origin + t * ray.direction;
 	hit->normal = normalize(hit->position);
+
+	double phi = atan2(hit->position.z, hit->position.x);
+	double theta = acos(hit->position.y / radius);
+	double u = (phi + M_PI) / (2 * M_PI);
+	double v = (M_PI - theta) / M_PI;
+	hit->uv = double2(u, v);
 	return true;
 }
 
@@ -86,38 +91,30 @@ bool Quad::local_intersect(Ray ray,
 							double t_min, double t_max, 
 							Intersection *hit)
 {
-	// Quad properties
 	double3 normal = double3(0, 0, 1);
-	double3 origin = double3(0, 0, 0);
-
 	double denominator = dot(normal, ray.direction);
-	// no collision possible
-	if (denominator == 0)
-	{
-		//std::cout << "Ray is parallel to the quad" << std::endl;
-		return false; // ray is parallel to the quad
-	}
-	else
-	{
-		double t = dot(normal, origin - ray.origin) / denominator;
-		if (t < t_min || t > t_max)
-		{
-			return false;
-		}
 
-		double3 intersection = ray.origin + t * ray.direction;
-		if (intersection.x < -half_size || intersection.x > half_size || intersection.y < -half_size || intersection.y > half_size)
-		{
-			return false;
-		}
-
-		hit->depth = t;
-		hit->position = intersection;
-		hit->normal = normal;
-		hit->uv = double2((intersection.x + half_size) / (2 * half_size), (intersection.y + half_size) / (2 * half_size));
+	if (fabs(denominator) < EPSILON) {
+		return false; 
 	}
 
-	
+	double t = dot(normal, double3(0, 0, 0) - ray.origin) / denominator;
+	if (t < t_min || t > t_max) {
+		return false;
+	}
+
+	double3 intersection = ray.origin + t * ray.direction;
+	if (fabs(intersection.x) > half_size || fabs(intersection.y) > half_size) {
+		return false;
+	}
+	double u = (intersection.x + half_size) / (2 * half_size);
+	double v = (intersection.y + half_size) / (2 * half_size);
+	//update
+	hit->depth = t;
+	hit->position = intersection;
+	hit->normal = normal;
+	hit->uv = double2(u,v);
+
 	return true;
 }
 
@@ -168,41 +165,81 @@ bool Cylinder::local_intersect(Ray ray,
 							   double t_min, double t_max, 
 							   Intersection *hit)
 {
-	
 	double a = pow(ray.direction.x, 2) + pow(ray.direction.z, 2);
-	double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.z * ray.origin.z);
-	double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
-	double t;
-	bool twoHits = false;
-
+    double b = 2 * (ray.direction.x * ray.origin.x + ray.direction.z * ray.origin.z);
+    double c = pow(ray.origin.x, 2) + pow(ray.origin.z, 2) - pow(radius, 2);
+    double t;
+    bool twoHits = false;
 
     double discriminant = b * b - 4 * a * c;
+    // no solutions
     if (discriminant < EPSILON) {
-        return false; 
+        return false;
+    }
+    // one solution
+    else if (discriminant == 0) {
+        double temp = -b / (2 * a); // valeur de t pour la seule collision
+        if (temp < t_max && temp > t_min) {
+            t = temp;
+        } else {
+            return false;
+        }
+    }
+    // two solutions
+    else {
+        // les deux valeurs possibles de t
+        double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+        double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+
+        // les deux t sont valides
+        if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max) {
+            if (temp1 < temp2) {
+                t = temp1;
+            } else {
+                t = temp2;
+            }
+        } else if (temp1 > t_min && temp1 < t_max) {
+            t = temp1;
+        } else if (temp2 > t_min && temp2 < t_max) {
+            t = temp2;
+        } else {
+            return false;
+        }
     }
 
-    double sqrtDiscriminant = sqrt(discriminant);
-    double t1 = (-b - sqrtDiscriminant) / (2 * a);
-    double t2 = (-b + sqrtDiscriminant) / (2 * a);
-
-    // We want t1 smaller always 
-    if (t1 > t2) std::swap(t1, t2);
-
-    // Check if t1 is within bounds and height
-    double y1 = ray.origin.y + t1 * ray.direction.y;
-    if (t1 > t_min && t1 < t_max && y1 >= -half_height && y1 <= half_height) {
-        hit->depth = t1;
-        hit->position = ray.origin + t1 * ray.direction;
+    // check if the intersection point is within the cylinder's height
+    double y = ray.origin.y + t * ray.direction.y;
+    if (y >= -half_height && y < half_height) {
+        hit->depth = t;
+        hit->position = ray.origin + t * ray.direction;
         hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
+        // Calculate UV coordinates
+        double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI);
+        double v = (y + half_height) / (2 * half_height);
+        hit->uv = double2(u, v);
         return true;
     }
 
-    // Check t2 if t1 out of bounds and height
-    double y2 = ray.origin.y + t2 * ray.direction.y;
-    if (t2 > t_min && t2 < t_max && y2 >= -half_height && y2 <= half_height) {
-        hit->depth = t2;
-        hit->position = ray.origin + t2 * ray.direction;
-        hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
+    // check for intersection with the inside of the cylinder
+    double temp1 = (-b + sqrt(discriminant)) / (2 * a);
+    double temp2 = (-b - sqrt(discriminant)) / (2 * a);
+    if (temp1 > t_min && temp1 < t_max) {
+        t = temp1;
+    } else if (temp2 > t_min && temp2 < t_max) {
+        t = temp2;
+    } else {
+        return false;
+    }
+
+    y = ray.origin.y + t * ray.direction.y;
+    if (y >= -half_height && y < half_height) {
+        hit->depth = t;
+        hit->position = ray.origin + t * ray.direction;
+        hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
+        // Calculate UV coordinates
+        double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI);
+        double v = (y + half_height) / (2 * half_height);
+        hit->uv = double2(u, v);
         return true;
     }
 
@@ -333,6 +370,24 @@ bool Mesh::intersect_triangle(Ray  ray,
 		hit->depth = t;
 		hit->position = intersection;
 		hit->normal = normal;
+
+		// Calculate UV coordinates using barycentric coordinates
+		double3 edge0 = p1 - p0;
+		double3 edge1 = p2 - p0;
+		double3 edge2 = intersection - p0;
+
+		double d00 = dot(edge0, edge0);
+		double d01 = dot(edge0, edge1);
+		double d11 = dot(edge1, edge1);
+		double d20 = dot(edge2, edge0);
+		double d21 = dot(edge2, edge1);
+
+		double denom = d00 * d11 - d01 * d01;
+		double v = (d11 * d20 - d01 * d21) / denom;
+		double w = (d00 * d21 - d01 * d20) / denom;
+		double u = 1.0 - v - w;
+
+		hit->uv = double2(u, v);
 		return true;
 	}
 

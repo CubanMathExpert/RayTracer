@@ -58,12 +58,6 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				double3 ray_color{0,0,0};
 				double z_depth = scene.camera.z_far;
 
-				// @@@@@@ VOTRE CODE ICI
-				// Mettez en place le rayon primaire en utilisant les paramètres de la caméra.
-				// Lancez le rayon de manière uniformément aléatoire à l'intérieur du pixel dans la zone délimité par jitter_radius. 
-				//Faites la moyenne des différentes couleurs obtenues suite à la récursion.
-				//double3 rayOrigin = camOrth.minPosition + uVec * x_shift * x + vVec * y_shift * y;
-				//auto pixelCenter = scene.camera.position + (x * pixel_delta_u * vpRight) - (y * pixel_delta_v * vpUp);
 				double3 jitter{random_in_unit_disk() * scene.jitter_radius, 0};
 				double3 pxy = pixel00 + (x + jitter.x) * pixel_delta_u * vpRight - (y + jitter.y) * pixel_delta_v * vpUp;
 				auto rayOrigin = scene.camera.position;
@@ -81,8 +75,6 @@ void Raytracer::render(const Scene& scene, Frame* output)
 			avg_z_depth = avg_z_depth / scene.samples_per_pixel;
 			avg_ray_color = avg_ray_color / scene.samples_per_pixel;
 
-			//std::cout << avg_ray_color << std::endl;
-			//std::cout << avg_z_depth << std::endl;
 
 			// Test de profondeur
 			if(avg_z_depth >= scene.camera.z_near && avg_z_depth <= scene.camera.z_far && 
@@ -117,7 +109,8 @@ void Raytracer::trace(const Scene& scene,
 	Intersection hit;
 	// Fait appel à l'un des containers spécifiées.
 	if(scene.container->intersect(ray,EPSILON,*out_z_depth,&hit)) {		
-		Material& material = ResourceManager::Instance()->materials[hit.key_material];
+		auto* resourceManager = ResourceManager::Instance();
+		Material& material = resourceManager->materials[hit.key_material];
 
 		// Calculate the local shading at the intersection point
 		double3 local_color = shade(scene, hit);
@@ -155,14 +148,33 @@ void Raytracer::trace(const Scene& scene,
 //		* Déterminer la couleur du point d'intersection.
 //        	- Si texture est présente, prende la couleur à la coordonnées uv
 //			- Si aucune texture, prendre la couleur associé au matériel.
-
 double3 Raytracer::shade(const Scene& scene, Intersection hit)
 {
 	Material& material = ResourceManager::Instance()->materials[hit.key_material];
+    double3 texture_color;
+	double3 color;
+    // Check if the material has a texture
+    if (material.texture_albedo.width() > 0 && material.texture_albedo.height() > 0) {
+        // get info 
+        int width = material.texture_albedo.width();
+        int height = material.texture_albedo.height();
+        double u = hit.uv.x;
+        double v = hit.uv.y;
 
-	// La * ka * s(lambda)
-	double3 ambient = scene.ambient_light * material.k_ambient * material.color_albedo;
-	double3 color = ambient;
+        // Convert UV coordinates to texture coordinates
+        int x = static_cast<int>(u * width);
+        int y = static_cast<int>(v * height);
+        // clamp the values
+        x = std::clamp(x, 0, width - 1);
+        y = std::clamp(y, 0, height - 1);
+		//convert to double3 the rgb_t 
+		rgb_t color_pixel = material.texture_albedo.get_pixel(x, y);
+        texture_color = double3(color_pixel.red / 255.0, color_pixel.green / 255.0, color_pixel.blue / 255.0);
+
+		color = texture_color * material.k_ambient * scene.ambient_light;
+    }else{
+		color = material.color_albedo * material.k_ambient * scene.ambient_light;
+	}
 
 	// hit information
 	double3 intersection_point = hit.position;
@@ -218,12 +230,5 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 			color += (diffuse + specular) * pow(light_distance_inverse, 2) * light.emission * shadow_factor;
 		}
 	}
-	/*
-	// Si une texture est présente, prendre la couleur à la coordonnée UV
-	if (material.has_texture)
-	{
-		color *= ResourceManager::Instance()->getTexture(material.texture_id).sample(hit.uv);
-	}
-	*/
 	return color;
 }
