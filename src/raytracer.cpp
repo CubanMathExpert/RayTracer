@@ -53,7 +53,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Génère le rayon approprié pour ce pixel.
 				Ray ray;
 				// Initialise la profondeur de récursivité du rayon.
-				int ray_depth = 0;
+				int ray_depth = 5;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
 				double z_depth = scene.camera.z_far;
@@ -111,21 +111,44 @@ void Raytracer::trace(const Scene& scene,
 	if(scene.container->intersect(ray,EPSILON,*out_z_depth,&hit)) {		
 		auto* resourceManager = ResourceManager::Instance();
 		Material& material = resourceManager->materials[hit.key_material];
-
-		// Calculate the local shading at the intersection point
 		double3 local_color = shade(scene, hit);
-		// @@@@@@ VOTRE CODE ICI
-		// Déterminer la couleur associée à la réflection d'un rayon de manière récursive.
-		
-		// @@@@@@ VOTRE CODE ICI
-		// Déterminer la couleur associée à la réfraction d'un rayon de manière récursive.
-		// 
-		// Assumez que l'extérieur/l'air a un indice de réfraction de 1.
-		//
-		// Toutes les géométries sont des surfaces et non pas de volumes.
 
+		// Réflexion
+		double3 reflection_color = {0, 0, 0};
+        if (material.k_reflection > 0.0) {
+            double3 reflection_direction = ray.direction - 2 * dot(ray.direction, hit.normal) * hit.normal;
+            Ray reflection_ray(hit.position + EPSILON * hit.normal, reflection_direction);
 
-		*out_color = local_color;
+            double3 reflected_color = {0, 0, 0};
+            double reflection_depth = *out_z_depth;
+            trace(scene, reflection_ray, ray_depth - 1, &reflected_color, &reflection_depth);
+			
+            reflection_color = reflected_color * material.k_reflection;
+        }
+		 // Refraction
+        double3 refraction_color = {0, 0, 0};
+        if (material.k_refraction > 0.0) {
+            double eta = (dot(ray.direction, hit.normal) < 0) ? (1.0 / material.refractive_index) : material.refractive_index;
+            double3 refraction_normal = (dot(ray.direction, hit.normal) < 0) ? hit.normal : -hit.normal;
+
+            double cos_theta_i = -dot(refraction_normal, ray.direction);
+            double sin2_theta_t = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
+
+            if (sin2_theta_t <= 1.0) {  // Only proceed if total internal reflection doesn’t occur
+                double cos_theta_t = sqrt(1.0 - sin2_theta_t);
+                double3 refraction_direction = eta * ray.direction + (eta * cos_theta_i - cos_theta_t) * refraction_normal;
+                Ray refraction_ray(hit.position - EPSILON * refraction_normal, refraction_direction);
+
+                double3 refracted_color = {0, 0, 0};
+                double refraction_depth = *out_z_depth;
+                trace(scene, refraction_ray, ray_depth - 1, &refracted_color, &refraction_depth);
+
+                refraction_color = refracted_color * material.k_refraction;
+            }
+        }
+
+		double local_weight = std::max(0.0, 1.0 - material.k_reflection - material.k_refraction);
+        *out_color = local_color * local_weight + reflection_color + refraction_color;
 		*out_z_depth = hit.depth;
 	} 
 	else 

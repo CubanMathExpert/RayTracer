@@ -111,13 +111,17 @@ bool Quad::local_intersect(Ray ray,
 	if (fabs(intersection.x) > half_size || fabs(intersection.y) > half_size) {
 		return false;
 	}
+	 // Adjust normal direction based on ray approach direction (making it double-sided)
+    if (denominator > 0) {
+        normal = -normal;  // Flip normal to face the ray
+    }
 	double u = (intersection.x + half_size) / (2 * half_size);
-	double v = 1-(intersection.y + half_size) / (2 * half_size);
+	double v = (intersection.y + half_size) / (2 * half_size);
 	//update
 	hit->depth = t;
 	hit->position = intersection;
 	hit->normal = normal;
-	hit->uv = double2(u,v);
+	hit->uv = double2(u,1-v);
 
 	return true;
 }
