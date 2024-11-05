@@ -63,24 +63,37 @@ bool Sphere::local_intersect(Ray ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour la sphère.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Sphere::compute_aabb() {
-	// local elements
-    double3 local_center = {0, 0, 0};
-    double3 local_radius_point = {radius, 0, 0};
+	 // Define the sphere's local-space bounding points
+    double3 local_corners[8] = {
+        {-radius, -radius, -radius},
+        { radius, -radius, -radius},
+        {-radius,  radius, -radius},
+        { radius,  radius, -radius},
+        {-radius, -radius,  radius},
+        { radius, -radius,  radius},
+        {-radius,  radius,  radius},
+        { radius,  radius,  radius}
+    };
 
-    // global elements
-    double4 global_center = mul(transform, {local_center, 1});
-    double4 global_radius_point = mul(transform, {local_radius_point, 0});
+    // Transform each corner to global space and find min/max bounds
+    double3 min, max;
+    bool first_point = true;
+    for (const auto& corner : local_corners) {
+        double4 global_corner = mul(transform, {corner, 1});
 
-    double transformed_radius = length(global_radius_point - global_center);
-
-    // Define the global AABB
-    double3 min = {global_center.x - transformed_radius,
-                   global_center.y - transformed_radius,
-                   global_center.z - transformed_radius};
-
-    double3 max = {global_center.x + transformed_radius,
-                   global_center.y + transformed_radius,
-                   global_center.z + transformed_radius};
+        if (first_point) {
+            min = {global_corner.x, global_corner.y, global_corner.z};
+            max = min;
+            first_point = false;
+        } else {
+            min = {std::min(min.x, global_corner.x),
+                   std::min(min.y, global_corner.y),
+                   std::min(min.z, global_corner.z)};
+            max = {std::max(max.x, global_corner.x),
+                   std::max(max.y, global_corner.y),
+                   std::max(max.z, global_corner.z)};
+        }
+    }
 
     return AABB{min, max};
 }
@@ -156,7 +169,7 @@ AABB Quad::compute_aabb() {
 		       std::max(max.z, global_corner.z)};
 	}
 
-	// Expand the AABB slightly in the z direction to account for numerical precision
+	// error on plane
 	min.z -= epsilon;
 	max.z += epsilon;
 

@@ -63,8 +63,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				auto rayOrigin = scene.camera.position;
 				auto rayDirection = normalize(pxy - scene.camera.position);
 				ray = Ray(rayOrigin, rayDirection);
-
-				// trace ray and set values to ray_color and ray_depth
+				
 				trace(scene, ray, ray_depth, &ray_color, &z_depth);
 
 				avg_ray_color += ray_color;
