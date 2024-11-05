@@ -53,7 +53,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				// Génère le rayon approprié pour ce pixel.
 				Ray ray;
 				// Initialise la profondeur de récursivité du rayon.
-				int ray_depth = 1;
+				int ray_depth = 16;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
 				double z_depth = scene.camera.z_far;
@@ -148,9 +148,7 @@ void Raytracer::trace(const Scene& scene,
                 refraction_color = refracted_color * material.k_refraction;
             }
         }
-
-		double local_weight = std::max(0.0, 1.0 - material.k_reflection - material.k_refraction);
-        *out_color = local_color * local_weight + reflection_color + refraction_color;
+        *out_color = local_color + reflection_color + refraction_color;
 		*out_z_depth = hit.depth;
 	} 
 	else 
@@ -205,8 +203,6 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 	// hit information
 	double3 intersection_point = hit.position;
 	double3 normal = hit.normal;
-
-	// camera direction
 	double3 view_dir = normalize(scene.camera.position - intersection_point);
 	
 	// ALL OF THE LIGHTS
@@ -219,7 +215,7 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 
 		int unoccludedCount = 0;
 
-		int echantillon = 3;
+		int echantillon = 16;
 		for (int i = 0; i < echantillon; i++)
 		{
 			double3 jitter = double3{random_in_unit_disk(), 0} * light.radius;

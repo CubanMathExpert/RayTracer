@@ -1,9 +1,9 @@
 #Meta argument for the actual scene
 dimension 640 480 #Largeur Hauteur
 container "Naive" # Type de container pour nos objets [Naive,BVH]
-samples_per_pixel 5 # Nombre d'echantillon par pixel
+samples_per_pixel 16 # Nombre d'echantillon par pixel
 jitter_radius 0.5 # Variation aléatoire dans un carrée lors du lancer de rayon.
-max_ray_depth  2 # Profondeur maximale
+max_ray_depth  16 # Profondeur maximale
 ambient_light [0.1 0.1 0.1] # Lumière ambiante associée à la lampe.
 
 # Comme gluPerspective.
