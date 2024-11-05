@@ -45,15 +45,15 @@ void Raytracer::render(const Scene& scene, Frame* output)
 
         for(int x = 0; x < scene.resolution[0]; x++) {
 
-			double avg_z_depth = 0; // changed this to double
+			int avg_z_depth = 0; 
 			double3 avg_ray_color{0,0,0};
-			//std::cout << "x: " << x << " y: " << y << std::endl;
+			
 			
 			for(int iray = 0; iray < scene.samples_per_pixel; iray++) {
 				// Génère le rayon approprié pour ce pixel.
 				Ray ray;
 				// Initialise la profondeur de récursivité du rayon.
-				int ray_depth = 5;
+				int ray_depth = 1;
 				// Initialize la couleur du rayon
 				double3 ray_color{0,0,0};
 				double z_depth = scene.camera.z_far;
@@ -63,7 +63,7 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				auto rayOrigin = scene.camera.position;
 				auto rayDirection = normalize(pxy - scene.camera.position);
 				ray = Ray(rayOrigin, rayDirection);
-				
+
 				trace(scene, ray, ray_depth, &ray_color, &z_depth);
 
 				avg_ray_color += ray_color;
@@ -110,8 +110,8 @@ void Raytracer::trace(const Scene& scene,
 	if(scene.container->intersect(ray,EPSILON,*out_z_depth,&hit)) {		
 		auto* resourceManager = ResourceManager::Instance();
 		Material& material = resourceManager->materials[hit.key_material];
-		double3 local_color = shade(scene, hit);
-
+		double3 local_color = shade(scene, hit);// i can't seem to make it work 
+		
 		// Réflexion
 		double3 reflection_color = {0, 0, 0};
         if (material.k_reflection > 0.0) {
@@ -124,7 +124,7 @@ void Raytracer::trace(const Scene& scene,
 			
             reflection_color = reflected_color * material.k_reflection;
         }
-		 // Refraction
+		// Refraction
         double3 refraction_color = {0, 0, 0};
         if (material.k_refraction > 0.0) {
 			//lapproximation eta = 1.0 / material.refractive_index
@@ -219,8 +219,8 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 
 		int unoccludedCount = 0;
 
-		int echantillonnage = 5;
-		for (int i = 0; i < echantillonnage; i++)
+		int echantillon = 3;
+		for (int i = 0; i < echantillon; i++)
 		{
 			double3 jitter = double3{random_in_unit_disk(), 0} * light.radius;
 			double3 jittered_light_position = light.position + jitter;
@@ -240,7 +240,7 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 		// Calcul de l'intensité de la lumière seulement si le point n'est pas dans l'ombre
 		if (unoccludedCount > 0)
 		{
-			double shadow_factor = static_cast<double>(unoccludedCount) / echantillonnage;
+			double shadow_factor = static_cast<double>(unoccludedCount) / echantillon;
 
 			// Diffuse
 			double diff_intensity = std::max(dot(normal, light_direction), 0.0);

@@ -7,14 +7,16 @@
 //			- Faites l'intersection du rayon avec le AABB gauche et droite. 
 //				- S'il y a intersection, ajouter le noeud à ceux à visiter. 
 // - Retourner l'intersection avec la profondeur maximale la plus PETITE.
+#include <stack> 
+
 bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
     bool isHit = false;
-    std::vector<BVHNode*> toVisit;
-    toVisit.push_back(root);
+    std::stack<BVHNode*> toVisit; // Use std::stack for better performance
+    toVisit.push(root);
 
     while (!toVisit.empty()) {
-        BVHNode* node = toVisit.back();
-        toVisit.pop_back();
+        BVHNode* node = toVisit.top(); // Get the top node
+        toVisit.pop(); // Remove the top node
 
         if (node->aabb.intersect(ray, t_min, t_max)) {
             if (node->left == nullptr && node->right == nullptr) {
@@ -27,13 +29,15 @@ bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
                     }
                 }
             } else {
-               if(node->left != nullptr) toVisit.push_back(node->left);
-               if(node->right != nullptr) toVisit.push_back(node->right);
+                // Push children to the stack in a way that maintains depth-first traversal
+                if (node->right != nullptr) toVisit.push(node->right);
+                if (node->left != nullptr) toVisit.push(node->left);
             }
         }
     }
     return isHit;
 }
+
 
 // @@@@@@ VOTRE CODE ICI
 // - Parcourir tous les objets

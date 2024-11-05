@@ -169,7 +169,7 @@ AABB Quad::compute_aabb() {
 		       std::max(max.z, global_corner.z)};
 	}
 
-	// error on plane
+	// error 
 	min.z -= epsilon;
 	max.z += epsilon;
 
@@ -393,8 +393,6 @@ bool Mesh::intersect_triangle(Ray  ray,
 		hit->normal = normal;
 		// Interpolation des coordonnées UV à l'aide des coordonnées barycentriques
         // Assumez que vous avez accès aux coordonnées UV des sommets
-      
-
         
 		return true;
 	}
