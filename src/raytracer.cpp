@@ -62,6 +62,9 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				double3 pxy = pixel00 + (x + jitter.x) * pixel_delta_u * vpRight - (y + jitter.y) * pixel_delta_v * vpUp;
 				auto rayOrigin = scene.camera.position;
 				auto rayDirection = normalize(pxy - scene.camera.position);
+
+				// depth of field
+
 				ray = Ray(rayOrigin, rayDirection);
 
 				trace(scene, ray, ray_depth, &ray_color, &z_depth);
