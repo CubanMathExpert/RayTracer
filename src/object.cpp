@@ -199,7 +199,7 @@ bool Cylinder::local_intersect(Ray ray,
         double temp1 = (-b + sqrt(discriminant)) / (2 * a);
         double temp2 = (-b - sqrt(discriminant)) / (2 * a);
 
-        // les deux t sont valides
+        // les deux t sont validesersection with the inside of the cylinder
         if (temp1 > t_min && temp1 < t_max && temp2 > t_min && temp2 < t_max) {
             if (temp1 < temp2) {
                 t = temp1;
@@ -222,8 +222,8 @@ bool Cylinder::local_intersect(Ray ray,
         hit->position = ray.origin + t * ray.direction;
         hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
         // Calculate UV coordinates
-		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle around the y-axis
-		double v = 1-(hit->position.y + half_height) / (2 * half_height);           // Height along the y-axis
+		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle y-axis
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);         // Height y-axis
 		hit->uv = double2(u, v);
         return true;
     }
@@ -246,7 +246,7 @@ bool Cylinder::local_intersect(Ray ray,
         hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
         // Calculate UV coordinates
 		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle around the y-axis
-		double v = 1-(hit->position.y + half_height) / (2 * half_height);           // Height along the y-axis
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);         // Height along the y-axis
 		hit->uv = double2(u, v);
         return true;
     }
@@ -342,6 +342,12 @@ bool Mesh::intersect_triangle(Ray  ray,
 	// NOTE : hit.depth est la profondeur de l'intersection actuellement la plus proche,
 	// donc n'acceptez pas les intersections qui occurent plus loin que cette valeur.
 	// on va faire un plan par dessus le triangle 
+
+	// extrait les coordonnes UV des sommets
+	double2 const &uv0 = tex_coords[tri[0].ti];
+	double2 const &uv1 = tex_coords[tri[1].ti];
+	double2 const &uv2 = tex_coords[tri[2].ti];
+
 	double3 normal = normalize(cross(p1 - p0, p2 - p0)); 
 	double3 origin = {0, 0, 0};
 	double3 intersection;
@@ -380,6 +386,12 @@ bool Mesh::intersect_triangle(Ray  ray,
 		hit->normal = normal;
 		// Interpolation des coordonnées UV à l'aide des coordonnées barycentriques
         // Assumez que vous avez accès aux coordonnées UV des sommets
+		double air = length(cross(p1 - p0, p2 - p0)); // air du triangle
+		double a0 = length(cross(intersection - p1, intersection - p2)) / air;
+		double a1 = length(cross(intersection - p2, intersection - p0)) / air;
+		double a2 = length(cross(intersection - p0, intersection - p1)) / air;
+
+		hit->uv = a0 * uv0 + a1 * uv1 + a2 * uv2;
       
 
         
