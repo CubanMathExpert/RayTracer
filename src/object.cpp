@@ -63,20 +63,10 @@ bool Sphere::local_intersect(Ray ray,
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour la sphère.
 // Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Sphere::compute_aabb() {
-	 // Define the sphere's local-space bounding points
-    double3 local_corners[8] = {
-        {-radius, -radius, -radius},
-        { radius, -radius, -radius},
-        {-radius,  radius, -radius},
-        { radius,  radius, -radius},
-        {-radius, -radius,  radius},
-        { radius, -radius,  radius},
-        {-radius,  radius,  radius},
-        { radius,  radius,  radius}
-    };
-
-    // Transform each corner to global space and find min/max bounds
-    double3 min, max;
+	 
+	AABB cylinder = construct_aabb({{-radius, -radius, -radius}, {radius,radius,radius}});
+	std::vector<double3> local_corners = retrieve_corners(cylinder);
+    double3 min, max;// global
     bool first_point = true;
     for (const auto& corner : local_corners) {
         double4 global_corner = mul(transform, {corner, 1});
@@ -145,7 +135,7 @@ bool Quad::local_intersect(Ray ray,
 AABB Quad::compute_aabb() {
 	double epsilon = 1e-6;
 
-	// Define the four corners of the quad in local space
+	// Define the four corners 
 	double3 local_corners[4] = {
 		{-half_size, -half_size, 0},
 		{half_size, -half_size, 0},
@@ -153,7 +143,7 @@ AABB Quad::compute_aabb() {
 		{-half_size, half_size, 0}
 	};
 
-	// Initialize min and max bounds with the first transformed corner
+	// Initialize first
 	double4 first_corner_global = mul(transform, {local_corners[0], 1});
 	double3 min = {first_corner_global.x, first_corner_global.y, first_corner_global.z};
 	double3 max = min;
@@ -169,7 +159,7 @@ AABB Quad::compute_aabb() {
 		       std::max(max.z, global_corner.z)};
 	}
 
-	// error 
+	// error bounds to avoid the ray to miss 
 	min.z -= epsilon;
 	max.z += epsilon;
 
@@ -234,9 +224,9 @@ bool Cylinder::local_intersect(Ray ray,
         hit->depth = t;
         hit->position = ray.origin + t * ray.direction;
         hit->normal = normalize(double3(hit->position.x, 0, hit->position.z));
-        // Calculate UV coordinates
-		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle y-axis
-		double v = 1-(hit->position.y + half_height) / (2 * half_height);         // Height y-axis
+        // Calculate UV coordinates (angle and height around y)
+		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); 
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);         
 		hit->uv = double2(u, v);
         return true;
     }
@@ -257,9 +247,9 @@ bool Cylinder::local_intersect(Ray ray,
         hit->depth = t;
         hit->position = ray.origin + t * ray.direction;
         hit->normal = -normalize(double3(hit->position.x, 0, hit->position.z)); // Invert normal for inside
-        // Calculate UV coordinates
-		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); // Angle around the y-axis
-		double v = 1-(hit->position.y + half_height) / (2 * half_height);         // Height along the y-axis
+        // Calculate UV coordinates (and height around y)
+		double u = (atan2(hit->position.z, hit->position.x) + M_PI) / (2 * M_PI); 
+		double v = 1-(hit->position.y + half_height) / (2 * half_height);        
 		hit->uv = double2(u, v);
         return true;
     }
@@ -269,31 +259,26 @@ bool Cylinder::local_intersect(Ray ray,
 
 // @@@@@@ VOTRE CODE ICI
 // Occupez-vous de compléter cette fonction afin de calculer le AABB pour le cylindre.
-// Il fautscr que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
+// Il faut que le AABB englobe minimalement notre objet à moins que l'énoncé prononce le contraire (comme ici).
 AABB Cylinder::compute_aabb() {
-    double3 local_center = {0, 0, 0};                    
-    double3 local_radius_point = {radius, 0, 0};         
-    double3 local_top = {0, 0, half_height};                      
 
-    // global space
-    double4 global_center = mul(transform, {local_center, 1});
-    double4 global_radius_point = mul(transform, {local_radius_point, 0});
-    double4 global_top = mul(transform, {local_top, 1});
+	AABB cylinder = construct_aabb({{-radius, -half_height, -radius}, {radius, half_height,radius}});
+	std::vector<double3> local_corners = retrieve_corners(cylinder);
+	//make sure it is initialised first
+	double3 global_min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+    double3 global_max = {std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()};
+    
+    for (const auto& corner : local_corners) {
+        double4 transformed_corner = mul(transform, {corner, 1}); // Transform to world space
 
-    // recalculate everything 
-    double transformed_radius = length(global_radius_point - global_center);
-    double transformed_half_height = length(global_top - global_center);
-
-    // define AABB in global space
-    double3 min = {global_center.x - transformed_radius,
-                   global_center.y - transformed_radius,
-                   global_center.z - transformed_half_height};
-
-    double3 max = {global_center.x + transformed_radius,
-                   global_center.y + transformed_radius,
-                   global_center.z + transformed_half_height};
-
-    return AABB{min, max};
+        global_min = {std::min(global_min.x, transformed_corner.x),
+					  std::min(global_min.y, transformed_corner.y),
+					  std::min(global_min.z, transformed_corner.z)};
+		global_max = {std::max(global_max.x, transformed_corner.x),
+					  std::max(global_max.y, transformed_corner.y),
+					  std::max(global_max.z, transformed_corner.z)};//get min max
+    }
+    return AABB{global_min, global_max };
 }
 
 // @@@@@@ VOTRE CODE ICI
@@ -397,8 +382,7 @@ bool Mesh::intersect_triangle(Ray  ray,
 		hit->depth = t;
 		hit->position = intersection;
 		hit->normal = normal;
-		// Interpolation des coordonnées UV à l'aide des coordonnées barycentriques
-        // Assumez que vous avez accès aux coordonnées UV des sommets
+		//coord barycentrique pour UV
 		double air = length(cross(p1 - p0, p2 - p0)); // air du triangle
 		double a0 = length(cross(intersection - p1, intersection - p2)) / air;
 		double a1 = length(cross(intersection - p2, intersection - p0)) / air;

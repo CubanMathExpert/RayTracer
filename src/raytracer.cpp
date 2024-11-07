@@ -249,8 +249,8 @@ double3 Raytracer::shade(const Scene& scene, Intersection hit)
 			double shadow_factor = static_cast<double>(unoccludedCount) / echantillon;
 
 			// Diffuse
-			double diff_intensity = std::max(dot(normal, light_direction), 0.0);
-			double3 diffuse = material.k_diffuse * diff_intensity * material.color_albedo;
+			double projection = std::max(dot(normal, light_direction), 0.0);
+			double3 diffuse = material.k_diffuse * projection * material.color_albedo;
 
 			// Spéculaire avec le modèle de Blinn
 			double3 H = normalize(view_dir + light_direction);
