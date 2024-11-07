@@ -37,6 +37,8 @@ void Raytracer::render(const Scene& scene, Frame* output)
 	double3 zeroPlane = (scene.camera.position + scene.camera.z_near * cameraDirection) + (leftPlane * vpRight) + (topPlane * vpUp);
 	double3 pixel00 = zeroPlane + (0.5 * pixel_delta_u * vpRight) - (0.5 * pixel_delta_v * vpUp);
 
+	double apertureRadius = tan(deg2rad(scene.camera.defocus_angle)) * scene.camera.focus_distance;
+
     // Itère sur tous les pixels de l'image.
     for(int y = 0; y < scene.resolution[1]; y++) {
 		if (y % 40){
@@ -64,6 +66,11 @@ void Raytracer::render(const Scene& scene, Frame* output)
 				auto rayDirection = normalize(pxy - scene.camera.position);
 
 				// depth of field
+				if (scene.camera.defocus_angle != 0) {
+					double3 focalPoint = rayOrigin + scene.camera.focus_distance * rayDirection;
+					rayOrigin += jitter * apertureRadius;
+					rayDirection = normalize(focalPoint - rayOrigin);
+				}
 
 				ray = Ray(rayOrigin, rayDirection);
 
