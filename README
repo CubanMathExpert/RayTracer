@@ -6,3 +6,15 @@ les sources en ligne et du professeur. La différence entre la mienne et celle p
 Aucune intersection avec les objets, j'ai conclu qu'il n'y avait pas de edge cases qui m'empêchait d'implémenter cela.
 Si on ajoute des intersections d'objets on peut alors revenir a l'implementation avant puisque le cas peut causer probleme 
 Alors,
+
+bool entering = dot(ray.direction, hit.normal) < 0;
+double eta = entering ? (1.0 / material.refractive_index) : material.refractive_index;
+
+devient simplement :
+
+double eta = 1.0/material.refractive_index;
+
+-Les intersections des cylindres avaient des problèmes avec l'éclairage à l'intérieur du cylindre qui ne faisait
+aucun sens. Dans mon implementation, on voit clairement la contribution des lumières extérieures sur les parties intérieures du cylindre,
+Tandis que dans celle fournie, on voit que c'est comme si la lumière touchait directement l'intérieur du cylindre.
+L'intersection du cylindre fourni par nous est la bonne.
