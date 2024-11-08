@@ -120,7 +120,7 @@ void Raytracer::trace(const Scene& scene,
 	if(scene.container->intersect(ray,EPSILON,*out_z_depth,&hit)) {		
 		auto* resourceManager = ResourceManager::Instance();
 		Material& material = resourceManager->materials[hit.key_material];
-		double3 local_color = shade(scene, hit);// i can't seem to make it work 
+		double3 local_color = shade(scene, hit);
 		
 		// Réflexion
 		double3 reflection_color = {0, 0, 0};
@@ -135,34 +135,33 @@ void Raytracer::trace(const Scene& scene,
             reflection_color = reflected_color * material.k_reflection;
         }
 		// Refraction
-        double3 refraction_color = {0, 0, 0};
-        if (material.k_refraction > 0.0) {
-			//lapproximation eta = 1.0 / material.refractive_index
-            double eta = (dot(ray.direction, hit.normal) < 0) ? (1.0 / material.refractive_index) : material.refractive_index;
-            double3 refraction_normal = (dot(ray.direction, hit.normal) < 0) ? hit.normal : -hit.normal;
-			//calcul des angles
-            double cos_theta_i = -dot(refraction_normal, ray.direction);
-            double sin2_theta_t = eta * eta * (1.0 - cos_theta_i * cos_theta_i);
+		// reference : https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
+		//t = eta * i + (eta * cos(theta_i) - sqrt(1 - sin^2(theta_t))) * n
+		double3 refraction_color = {0, 0, 0};
+		if (material.k_refraction > 0.0) {
+    		bool entering = dot(ray.direction, hit.normal) < 0;
+			//seulement de l'air à une autre refraction
+    		double eta = entering ? (1.0 / material.refractive_index) : material.refractive_index;
+    		double3 refraction_normal = entering ? hit.normal : -hit.normal;
+    		double cos_theta = -dot(refraction_normal, ray.direction);
+    		double sin2_theta = eta * eta * (1.0 - cos_theta * cos_theta);
 
-            if (sin2_theta_t <= 1.0) {  // No internal
-                double cos_theta_t = sqrt(1.0 - sin2_theta_t);
-                double3 refraction_direction = eta * ray.direction + (eta * cos_theta_i - cos_theta_t) * refraction_normal;
-				//new ray with right direction 
-                Ray refraction_ray(hit.position - EPSILON * refraction_normal, refraction_direction);
-				//pass arguments
-                double3 refracted_color = {0, 0, 0};
-                double refraction_depth = *out_z_depth;
-				//go somewhere else 
-                trace(scene, refraction_ray, ray_depth - 1, &refracted_color, &refraction_depth);
+    		if (sin2_theta <= 1.0) {  // No total internal reflection
+        		double3 t = eta * ray.direction + (eta * cos_theta - sqrt(1.0 - sin2_theta)) * refraction_normal;
+        		Ray refraction_ray(hit.position - EPSILON * refraction_normal, t);
 
-                refraction_color = refracted_color * material.k_refraction;
-            }
-        }
-        *out_color = local_color + reflection_color + refraction_color;
+        		// Trace the refraction ray
+        		double3 refracted_color = {0, 0, 0};
+        		double refraction_depth = *out_z_depth;
+        		trace(scene, refraction_ray, ray_depth - 1, &refracted_color, &refraction_depth);
+
+        		refraction_color = refracted_color * material.k_refraction;
+    		}
+		}
+		*out_color = local_color + reflection_color + refraction_color;
 		*out_z_depth = hit.depth;
 	} 
-	else 
-	{
+	else {
 		*out_color = double3{0,0,0};
 	}
 }

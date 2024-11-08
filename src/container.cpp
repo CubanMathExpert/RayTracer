@@ -11,7 +11,7 @@
 
 bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
     bool isHit = false;
-    std::stack<BVHNode*> toVisit; // Use std::stack for better performance
+    std::stack<BVHNode*> toVisit;
     toVisit.push(root);
 
     while (!toVisit.empty()) {
@@ -29,7 +29,7 @@ bool BVH::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
                     }
                 }
             } else {
-                // Push children to the stack in a way that maintains depth-first traversal
+                // Push children to the stack, maintain depth-first traversal
                 if (node->right != nullptr) toVisit.push(node->right);
                 if (node->left != nullptr) toVisit.push(node->left);
             }
@@ -52,7 +52,6 @@ bool Naive::intersect(Ray ray, double t_min, double t_max, Intersection* hit) {
     for (auto obj : objects) {
         AABB objAABB = obj->compute_aabb();
 
-        // Intersection the AABB
         if (!objAABB.intersect(ray, t_min, t_max)) {
             continue;  // Skip if no intersection 
         }
