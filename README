@@ -1,1 +1,8 @@
-Vos noms et matricules:
+Vos noms et matricules: Antony Leclerc 20271552, Raphael Gonzalez Carvajal 20161430
+
+-Ma réfraction n'est pas identique à celle capturée dans l'exemple, mais je crois qu'elle est justement implémentée selon
+Les sources en ligne et du professeur. Voir le code
+-Les intersections des cylindres avaient des problèmes avec l'éclairage à l'intérieur du cylindre qui ne faisait
+aucun sens. Dans mon implementation, on voit clairement la contribution des lumières extérieures sur les parties intérieures du cylindre,
+Tandis que dans celle fournie, on voit que c'est comme si la lumière touchait directement l'intérieur du cylindre.
+L'intersection du cylindre fourni par nous est la bonne.
