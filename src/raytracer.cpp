@@ -140,7 +140,7 @@ void Raytracer::trace(const Scene& scene,
 		double3 refraction_color = {0, 0, 0};
 		if (material.k_refraction > 0.0) {
     		bool entering = dot(ray.direction, hit.normal) < 0;
-			//seulement de l'air à une autre refraction
+			//seulement de l'air à une autre refraction je considere aussi le cas a l'interieur de l'objet
     		double eta = entering ? (1.0 / material.refractive_index) : material.refractive_index;
     		double3 refraction_normal = entering ? hit.normal : -hit.normal;
     		double cos_theta = -dot(refraction_normal, ray.direction);
