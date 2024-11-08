@@ -1,6 +1,8 @@
 Vos noms et matricules: Antony Leclerc 20271552, Raphael Gonzalez Carvajal 20161430
 
--Les intersections des cylindres avaient des problèmes avec l'éclairage à l'intérieur du cylindre qui ne faisait
-aucun sens. Dans mon implementation, on voit clairement la contribution des lumières extérieures sur les parties intérieures du cylindre,
-Tandis que dans celle fournie, on voit que c'est comme si la lumière touchait directement l'intérieur du cylindre.
-L'intersection du cylindre fourni par nous est la bonne.
+-Ma réfraction n'est pas identique à celle capturée dans l'exemple, mais je crois qu'elle est mieux implémentée selon
+les sources en ligne et du professeur. La différence entre la mienne et celle présentée est que j'inclus le cas où je suis 
+À l'intérieur de l'objet, tandis que l'implémentation présentée assume qu'on est toujours à l'extérieur. Puisqu'il n'y a
+Aucune intersection avec les objets, j'ai conclu qu'il n'y avait pas de edge cases qui m'empêchait d'implémenter cela.
+Si on ajoute des intersections d'objets on peut alors revenir a l'implementation avant puisque le cas peut causer probleme 
+Alors,
